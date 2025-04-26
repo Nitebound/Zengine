@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mypackage"
+version = "0.1.0"
+authors = [{ name="Zachery Visger", email="zvisger@gmail.com" }]
+description = "Zach's Game Engine"
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.7"
+dependencies = [
+    "numpy>=1.20.0",
+    "requests>=2.25.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/mypackage"
