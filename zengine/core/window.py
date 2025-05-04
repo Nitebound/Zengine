@@ -12,8 +12,8 @@ class Window:
         pygame.init()
         pygame.display.set_mode(size, pygame.OPENGL | pygame.DOUBLEBUF)
         pygame.display.set_caption(title)
+        self.width, self.height = size
 
-        # ← change this:
         # self.ctx = moderngl.create_context(require=gl_version)
         self.ctx = moderngl.create_context()
 

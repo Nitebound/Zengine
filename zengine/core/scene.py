@@ -1,13 +1,11 @@
-# zengine/core/scene.py
-
 from zengine.ecs.entity_manager import EntityManager
 from zengine.ecs.systems.system import System
 
 class Scene:
     def __init__(self):
         self.entities      = EntityManager()
-        self.systems       = []            # type: list[System]
-        self.active_camera = None          # gets set by CameraSystem
+        self.systems       = []            # list[System]
+        self.active_camera = None
 
     def add_system(self, system: System):
         self.systems.append(system)

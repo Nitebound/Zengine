@@ -1,27 +1,35 @@
 import time
-from zengine.core.window    import Window
-from zengine.core.renderer  import Renderer
-from zengine.core.scene     import Scene
+from zengine.core.window import Window
+from zengine.core.renderer import Renderer
+from zengine.core.scene import Scene
 from zengine.graphics.shader import Shader
 
 class ProjectCanvas:
     def __init__(self, size=(800,600), title="Zengine"):
-        # 1) Window & GL
+        # 1) Window & OpenGL context
         self.window = Window(size, title)
-        prog = Shader(self.window.ctx,
-                      "assets/shaders/basic.vert",
-                      "assets/shaders/basic.frag")
-        self.window.renderer = Renderer(self.window.ctx, prog)
+        shader = Shader(
+            self.window.ctx,
+            "assets/shaders/basic.vert",
+            "assets/shaders/basic.frag"
+        )
+        self.window.renderer = Renderer(self.window.ctx, shader)
 
-        # 2) ECS scene container
+        # 2) ECS-managed scenes
         self.scenes = {}
         self.current_scene = None
 
-        # 3) User setup hook
+        # 3) Hook for user to set up scenes/systems/entities
         self.setup()
 
     def setup(self):
-        """Override this to create Scene, add systems & entities."""
+        """
+        Override this in your subclass to:
+          - create one or more Scene instances
+          - add systems (including CameraSystem, InputSystem, etc.)
+          - spawn entities and attach components (CameraView, Transform, SpriteRenderer, etc.)
+          - register each scene with add_scene(name, scene, make_current)
+        """
         pass
 
     def add_scene(self, name: str, scene: Scene, make_current=False):
@@ -30,23 +38,24 @@ class ProjectCanvas:
             self.current_scene = scene
 
     def run(self):
-        last = time.time()
+        last_time = time.time()
         while self.window.running:
-            # Poll and dispatch events
+            # 1) Poll and dispatch events
             for event in self.window.get_events():
                 if self.current_scene:
                     self.current_scene.on_event(event)
 
-            # Update
+            # 2) Update
             now = time.time()
-            dt  = now - last
-            last = now
+            dt = now - last_time
+            last_time = now
             if self.current_scene:
                 self.current_scene.on_update(dt)
 
-            # Render
+            # 3) Render (ECS CameraSystem must set scene.active_camera)
             self.window.ctx.clear(0.1, 0.1, 0.1)
             if self.current_scene:
                 self.current_scene.on_render(self.window.renderer)
 
+            # 4) Swap buffers
             self.window.on_late_update(dt)
