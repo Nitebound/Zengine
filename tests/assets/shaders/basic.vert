@@ -1,11 +1,15 @@
+// assets/shaders/basic.vert
 #version 330
 
-in vec3 in_position;
+layout(location = 0) in vec3 in_position;
+layout(location = 1) in vec2 in_uv;
 
-uniform mat4 u_Model;
-uniform mat4 u_ViewProjection;
+uniform mat4 model;
+uniform mat4 view_projection;
 
-void main()
-{
-    gl_Position = u_ViewProjection * u_Model * vec4(in_position, 1.0);
+out vec2 v_uv;
+
+void main() {
+    v_uv       = in_uv;
+    gl_Position = view_projection * model * vec4(in_position, 1.0);
 }

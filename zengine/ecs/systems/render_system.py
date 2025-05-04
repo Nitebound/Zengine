@@ -1,54 +1,29 @@
-import numpy as np
-from zengine.ecs.components import Transform, SpriteRenderer
-
-def compute_model_matrix(transform):
-    translation = np.identity(4, dtype='f4')
-    translation[0, 3] = transform.x
-    translation[1, 3] = transform.y
-
-    rotation = np.identity(4, dtype='f4')
-    angle = np.radians(transform.rotation)
-    rotation[0, 0] = np.cos(angle)
-    rotation[0, 1] = -np.sin(angle)
-    rotation[1, 0] = np.sin(angle)
-    rotation[1, 1] = np.cos(angle)
-
-    scale = np.identity(4, dtype='f4')
-    scale[0, 0] = transform.scale_x
-    scale[1, 1] = transform.scale_y
-
-    model = translation @ rotation @ scale
-    return model
-
+# zengine/ecs/systems/render_system.py
 
 import numpy as np
+from numpy import cos, sin
+from zengine.ecs.systems.system import System
 from zengine.ecs.components import Transform, SpriteRenderer
 
-class RenderSystem:
-    def process(self, renderer, camera, entity_manager):
-        view_projection = camera.get_view_projection()
+def compute_model_matrix(t: Transform) -> np.ndarray:
+    T = np.eye(4, dtype='f4'); T[0,3],T[1,3],T[2,3] = t.x,t.y,t.z
+    a = np.radians(t.rotation)
+    R = np.eye(4, dtype='f4')
+    R[0,0],R[0,1] = cos(a), -sin(a)
+    R[1,0],R[1,1] = sin(a),  cos(a)
+    S = np.eye(4, dtype='f4'); S[0,0],S[1,1],S[2,2] = t.scale_x,t.scale_y,t.scale_z
+    return T @ R @ S
 
-        for eid in entity_manager.get_entities_with(Transform, SpriteRenderer):
-            transform = entity_manager.get_component(eid, Transform)
-            sprite = entity_manager.get_component(eid, SpriteRenderer)
-
-            model = self.compute_model_matrix(transform)
-            renderer.draw_quad(model, view_projection)
-
-    def compute_model_matrix(self, transform):
-        translation = np.identity(4, dtype='f4')
-        translation[0, 3] = transform.x
-        translation[1, 3] = transform.y
-
-        rotation = np.identity(4, dtype='f4')
-        angle = np.radians(transform.rotation)
-        rotation[0, 0] = np.cos(angle)
-        rotation[0, 1] = -np.sin(angle)
-        rotation[1, 0] = np.sin(angle)
-        rotation[1, 1] = np.cos(angle)
-
-        scale = np.identity(4, dtype='f4')
-        scale[0, 0] = transform.scale_x
-        scale[1, 1] = transform.scale_y
-
-        return translation @ rotation @ scale
+class RenderSystem(System):
+    def on_render(self, renderer, scene, em):
+        cam = scene.active_camera
+        if cam is None:
+            return
+        vp = cam.vp_matrix
+        ents = list(em.get_entities_with(Transform, SpriteRenderer))
+        ents.sort(key=lambda e: em.get_component(e, Transform).z)
+        for eid in ents:
+            t  = em.get_component(eid, Transform)
+            sr = em.get_component(eid, SpriteRenderer)
+            m  = compute_model_matrix(t)
+            renderer.draw_quad(m, vp, sr.texture)

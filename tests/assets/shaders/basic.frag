@@ -1,8 +1,11 @@
+// assets/shaders/basic.frag
 #version 330
 
-out vec4 fragColor;
+in  vec2  v_uv;
+out vec4  f_color;
 
-void main()
-{
-    fragColor = vec4(0.2, 0.8, 0.3, 1.0); // Greenish solid color
+uniform sampler2D tex;
+
+void main() {
+    f_color = texture(tex, v_uv);
 }
