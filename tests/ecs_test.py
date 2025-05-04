@@ -31,7 +31,9 @@ class MyGame(ProjectCanvas):
 
         # Systems
         inp    = InputSystem()
-        cc_sys = CameraControllerSystem(inp, speed=5.0)
+        cc_sys = CameraControllerSystem(inp, speed=5.0, lock_z=10.0)
+
+        # cc_sys = CameraControllerSystem(inp, speed=5.0)
         c_sys  = CameraSystem(scene)
         pc_sys = PlayerControllerSystem(inp)
         r_sys  = RenderSystem()

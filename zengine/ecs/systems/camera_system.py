@@ -1,3 +1,5 @@
+# zengine/ecs/systems/camera_system.py
+
 import numpy as np
 from zengine.ecs.systems.system import System
 from zengine.ecs.components.camera_view import CameraView
@@ -15,7 +17,7 @@ class CameraSystem(System):
 
             tr = em.get_component(eid, Transform)
 
-            # 1) Orthographic projection
+            # orthographic projection (same as before)
             l, r = cam.left,   cam.right
             b, t = cam.bottom, cam.top
             n, f = cam.near,   cam.far
@@ -27,11 +29,11 @@ class CameraSystem(System):
                 [0,            0,        0,           1    ],
             ], dtype='f4')
 
-            # 2) Pure translation view
+            # view = translate X/Y; we already locked Z in the controller
             view = np.eye(4, dtype='f4')
             view[0,3] = -tr.x
             view[1,3] = -tr.y
-            view[2,3] = -tr.z
+            # view[2,3] stays at -tr.z but tr.z is constant lock_z
 
             cam.projection_matrix = proj
             cam.view_matrix       = view
