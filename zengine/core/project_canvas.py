@@ -53,7 +53,8 @@ class ProjectCanvas:
                 self.current_scene.on_update(dt)
 
             # 3) Render (ECS CameraSystem must set scene.active_camera)
-            self.window.ctx.clear(0.1, 0.1, 0.1)
+            self.window.ctx.clear(1.0, 0.1, 0.1, 1.0, depth=1.0)
+
             if self.current_scene:
                 self.current_scene.on_render(self.window.renderer)
 

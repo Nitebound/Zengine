@@ -24,6 +24,8 @@ class Window:
                 moderngl.ONE_MINUS_SRC_ALPHA,
             )
 
+        self.ctx.enable(moderngl.DEPTH_TEST)
+
         self.running = True
         self.window_size = size
         self.systems     = []

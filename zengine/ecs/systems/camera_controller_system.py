@@ -27,8 +27,8 @@ class CameraControllerSystem(System):
                 # normalize diagonal
                 mag = (dx*dx + dy*dy)**0.5
                 dx, dy = dx/mag if mag else 0, dy/mag if mag else 0
-                tr.x += dx * self.speed * dt
-                tr.y += dy * self.speed * dt
+                tr.x -= dx * self.speed * dt
+                tr.y -= dy * self.speed * dt
 
             # enforce constant height
             tr.z = self.lock_z

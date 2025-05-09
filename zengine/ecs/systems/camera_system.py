@@ -33,6 +33,7 @@ class CameraSystem(System):
             view = np.eye(4, dtype='f4')
             view[0,3] = -tr.x
             view[1,3] = -tr.y
+            view[2,3] = -tr.z
             # view[2,3] stays at -tr.z but tr.z is constant lock_z
 
             cam.projection_matrix = proj
