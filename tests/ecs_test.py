@@ -20,7 +20,7 @@ class MyGame(ProjectCanvas):
         input_sys = InputSystem()
         scene.add_system(input_sys)
 
-        cam_ctrl = CameraControllerSystem(input_sys, speed=551.0, lock_z=10.0)
+        cam_ctrl = CameraControllerSystem(input_sys, speed=551.0)
         scene.add_system(cam_ctrl)
 
         scene.add_system(CameraSystem(scene))
@@ -28,15 +28,16 @@ class MyGame(ProjectCanvas):
 
         # 2) Camera Entity
         cam_ent = scene.entities.create_entity()
+        print("We are here again...")
         # put camera at Z=10 looking toward Z=0
         scene.entities.add_component(cam_ent,
-            Transform(x=0.0, y=0.0, z=10.0)
+            Transform(x=0.0, y=0.0, z=4.0)
         )
         # orthographic bounds = half-width/height around 0
         w, h = self.window.width, self.window.height
         scene.entities.add_component(cam_ent,
             CameraView(
-                projection_type=ProjectionType.ORTHO,
+                projection_type=ProjectionType.PERSPECTIVE,
                 left   = -w/2, right  =  w/2,
                 bottom = -h/2, top    =  h/2,
                 near   =  0.1, far    = 100.0,
