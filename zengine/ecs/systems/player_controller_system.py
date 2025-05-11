@@ -6,12 +6,24 @@ from zengine.ecs.components import PlayerController, Transform
 
 class PlayerControllerSystem(System):
     def __init__(self, input_system):
+        super().__init__()
         self.input = input_system
 
-    def on_update(self, dt, em):
-        for eid in em.get_entities_with(PlayerController, Transform):
-            pc = em.get_component(eid, PlayerController)
-            tr = em.get_component(eid, Transform)
+    def on_event(self, event):
+        for eid in self.em.get_entities_with(PlayerController):
+            pc = self.em.get_component(eid, PlayerController)
+            if not pc.active:
+                continue
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    tr = self.em.get_component(eid, Transform)
+                    tr.rotation += 10
+
+    def on_update(self, dt):
+        for eid in self.em.get_entities_with(PlayerController, Transform):
+            pc = self.em.get_component(eid, PlayerController)
+            tr = self.em.get_component(eid, Transform)
 
             # move in X/Y
             vx = (self.input.is_key_down(pygame.K_d) -

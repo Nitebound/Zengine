@@ -22,13 +22,13 @@ class MyGame(ProjectCanvas):
 
         cam_ctrl = CameraControllerSystem(input_sys, speed=551.0)
         scene.add_system(cam_ctrl)
-
-        scene.add_system(CameraSystem(scene))
+        scene.add_system(CameraSystem())
         scene.add_system(PlayerControllerSystem(input_sys))
 
         # 2) Camera Entity
         cam_ent = scene.entities.create_entity()
-        print("We are here again...")
+        scene.active_camera = cam_ent
+
         # put camera at Z=10 looking toward Z=0
         scene.entities.add_component(cam_ent,
             Transform(x=0.0, y=0.0, z=4.0)
@@ -50,13 +50,16 @@ class MyGame(ProjectCanvas):
 
         # load your sprite
         tex = load_texture_2d(self.window.ctx, "assets/images/mech1.png")
+
         # size the quad to the texture’s pixel dims:
         scene.entities.add_component(player,
             Transform(
-                x=0.0, y=0.0, z=0.0,
-                scale_x=tex.width, scale_y=tex.height, scale_z=1.0
+                x=0, y=0.0, z=-1,
+                scale_x = tex.width, scale_y=tex.height, scale_z=1.0, rotation=0
             )
         )
+
+        scene.entities.add_component(player, PlayerController())
         scene.entities.add_component(player, SpriteRenderer(tex))
 
         # 4) Rendering

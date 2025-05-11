@@ -5,6 +5,7 @@ from zengine.ecs.systems.system import System
 
 class InputSystem(System):
     def __init__(self):
+        super().__init__()
         # persistent state
         self.keys_down     = set()
         self.mouse_down    = set()
@@ -51,7 +52,7 @@ class InputSystem(System):
             if self.dragging:
                 self.drag_current = event.pos
 
-    def on_update(self, dt, em):
+    def on_update(self, dt):
         # clear one‐frame events
         self.keys_pressed.clear()
         self.keys_released.clear()

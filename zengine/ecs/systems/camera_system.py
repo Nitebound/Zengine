@@ -4,16 +4,15 @@ from zengine.ecs.components.camera_view import CameraView, ProjectionType
 from zengine.ecs.components.transform   import Transform
 
 class CameraSystem(System):
-    def __init__(self, scene):
-        self.scene = scene
-
-    def on_update(self, dt, em):
-        for eid in em.get_entities_with(CameraView, Transform):
-            cam = em.get_component(eid, CameraView)
+    def __init__(self):
+        super().__init__()
+    def on_update(self, dt):
+        for eid in self.em.get_entities_with(CameraView, Transform):
+            cam = self.em.get_component(eid, CameraView)
             if not cam.active:
                 continue
 
-            tr = em.get_component(eid, Transform)
+            tr = self.em.get_component(eid, Transform)
 
             if cam.projection_type == ProjectionType.ORTHO:
                 # orthographic

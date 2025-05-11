@@ -8,6 +8,7 @@ class Scene:
         self.active_camera = None
 
     def add_system(self, system: System):
+        system.on_added(self)
         self.systems.append(system)
 
     def on_event(self, event):
@@ -16,8 +17,13 @@ class Scene:
 
     def on_update(self, dt: float):
         for sys in self.systems:
-            sys.on_update(dt, self.entities)
+            sys.on_update(dt)
 
     def on_render(self, renderer):
         for sys in self.systems:
-            sys.on_render(renderer, self, self.entities)
+            sys.on_render(renderer)
+
+    def on_late_update(self, dt: float):
+        for sys in self.systems:
+            sys.on_late_update(dt)
+

@@ -14,14 +14,19 @@ def compute_model_matrix(t: Transform) -> np.ndarray:
     return T @ R @ S
 
 class RenderSystem(System):
-    def on_render(self, renderer, scene, em):
-        cam = scene.active_camera
+    def __init__(self):
+        super().__init__()
+
+    def on_render(self, renderer):
+        cam = self.scene.active_camera
         if not cam:
             return
         vp = cam.vp_matrix
 
-        for eid in em.get_entities_with(Transform, SpriteRenderer):
-            t  = em.get_component(eid, Transform)
-            sr = em.get_component(eid, SpriteRenderer)
+        for eid in self.em.get_entities_with(Transform, SpriteRenderer):
+            t  = self.em.get_component(eid, Transform)
+            sr = self.em.get_component(eid, SpriteRenderer)
             m  = compute_model_matrix(t)
             renderer.draw_quad(m, vp, sr.texture)
+
+
