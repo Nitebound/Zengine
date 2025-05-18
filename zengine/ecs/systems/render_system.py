@@ -1,49 +1,40 @@
 # zengine/ecs/systems/render_system.py
-import numpy
+
+import numpy as np
+
+from zengine.ecs.components import SpriteRenderer
+from zengine.ecs.components.transform import Transform
 from zengine.ecs.systems.system import System
-from zengine.ecs.components.transform import Transform
-from zengine.ecs.components.sprite_renderer import SpriteRenderer
-from zengine.ecs.components.transform import Transform
 
-def compute_model_matrix(t: Transform) -> numpy.ndarray:
-    # 1) Translation
-    T = numpy.eye(4, dtype='f4')
-    T[:3, 3] = (t.x, t.y, t.z)
 
-    # 2) Rotations (pitch=X, yaw=Y, roll=Z)
-    rx, ry, rz = numpy.radians([t.rot_x, t.rot_y, t.rot_z])
-    cx, sx = numpy.cos(rx), numpy.sin(rx)
-    cy, sy = numpy.cos(ry), numpy.sin(ry)
-    cz, sz = numpy.cos(rz), numpy.sin(rz)
+def quat_to_mat4(x,y,z,w):
+    # builds a 4×4 rotation matrix from quaternion
+    xx, yy, zz = x*x, y*y, z*z
+    xy, xz, yz = x*y, x*z, y*z
+    wx, wy, wz = w*x, w*y, w*z
 
-    Rx = numpy.array([
-        [1,   0,    0, 0],
-        [0,  cx, -sx, 0],
-        [0,  sx,  cx, 0],
-        [0,   0,   0, 1],
+    return np.array([
+        [1-2*(yy+zz),  2*(xy - wz),  2*(xz + wy), 0],
+        [2*(xy + wz),  1-2*(xx+zz),  2*(yz - wx), 0],
+        [2*(xz - wy),  2*(yz + wx),  1-2*(xx+yy), 0],
+        [0,            0,            0,           1],
     ], dtype='f4')
 
-    Ry = numpy.array([
-        [ cy, 0, sy, 0],
-        [  0, 1,  0, 0],
-        [-sy, 0, cy, 0],
-        [  0, 0,  0, 1],
-    ], dtype='f4')
+def compute_model_matrix(t: Transform) -> np.ndarray:
+    # 1) translation
+    T = np.eye(4, dtype='f4')
+    T[:3,3] = (t.x, t.y, t.z)
 
-    Rz = numpy.array([
-        [cz, -sz, 0, 0],
-        [sz,  cz, 0, 0],
-        [ 0,   0, 1, 0],
-        [ 0,   0, 0, 1],
-    ], dtype='f4')
+    # 2) rotation from quaternion
+    R = quat_to_mat4(t.rot_qx, t.rot_qy, t.rot_qz, t.rot_qw)
 
-    R = Rz @ Ry @ Rx
-
-    # 3) Scale
-    S = numpy.eye(4, dtype='f4')
+    # 3) scale
+    S = np.eye(4, dtype='f4')
     S[0,0], S[1,1], S[2,2] = (t.scale_x, t.scale_y, t.scale_z)
 
     return T @ R @ S
+
+
 
 
 class GizmoRenderSystem(System):

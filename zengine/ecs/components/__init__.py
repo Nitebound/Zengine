@@ -8,4 +8,5 @@ from zengine.ecs.components.mesh_filter import MeshFilter
 from zengine.ecs.components.skinned_mesh import SkinnedMesh
 from zengine.ecs.components.light import LightComponent
 from zengine.ecs.components.animation import Animation
+from zengine.ecs.components.material import Material
 
