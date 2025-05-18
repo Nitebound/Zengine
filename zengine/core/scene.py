@@ -3,13 +3,15 @@ from zengine.ecs.systems.system import System
 
 class Scene:
     def __init__(self):
-        self.entities      = EntityManager()
+        self.entity_manager      = EntityManager()
         self.systems       = []            # list[System]
         self.active_camera = None
+        self._systems_by_type = {}
 
     def add_system(self, system: System):
         system.on_added(self)
         self.systems.append(system)
+        self._systems_by_type[type(system)] = system
 
     def on_event(self, event):
         for sys in self.systems:
@@ -27,3 +29,5 @@ class Scene:
         for sys in self.systems:
             sys.on_late_update(dt)
 
+    def get_system(self, system_type):
+        return self._systems_by_type.get(system_type, None)

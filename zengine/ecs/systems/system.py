@@ -10,7 +10,7 @@ class System:
     def on_added(self, scene):
         """Called by Scene.add_system() to inject Scene and EntityManager."""
         self.scene = scene
-        self.em = scene.entities
+        self.em = scene.entity_manager
 
     # Override these in subclasses:
     def on_event(self, event):

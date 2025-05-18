@@ -10,16 +10,35 @@ class InputSystem(System):
         self.keys_down     = set()
         self.mouse_down    = set()
         self.mouse_pos     = (0, 0)
+
         # one‐frame events
         self.keys_pressed  = set()
         self.keys_released = set()
         self.mouse_pressed = set()
         self.mouse_released= set()
         self.mouse_rel     = (0, 0)
+
         # dragging
         self.dragging      = False
         self.drag_start    = None
         self.drag_current  = None
+
+        self.axes = {
+            "horizontal": (pygame.K_d, pygame.K_a),
+            "vertical":   (pygame.K_s, pygame.K_w),
+            "rotation":      (pygame.K_q, pygame.K_e),
+            "depth": (pygame.K_f, pygame.K_g),
+            "horizontal2": (pygame.K_RIGHT, pygame.K_LEFT),
+            "vertical2":   (pygame.K_DOWN, pygame.K_UP),
+            "depth2":      (pygame.K_LEFTBRACKET, pygame.K_RIGHTBRACKET),
+            "rotation2":   (pygame.K_z, pygame.K_x),
+        }
+
+    def get_axis(self, name):
+        if name not in self.axes:
+            raise ValueError(f"Unknown axis: {name}")
+        pos, neg = self.axes[name]
+        return self.is_key_down(pos) - self.is_key_down(neg)
 
     def on_event(self, event):
         if event.type == pygame.KEYDOWN:

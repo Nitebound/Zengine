@@ -35,7 +35,7 @@ class App:
         self.running = True
         self.w, self.h = size
 
-        # Compile shaders & program
+        # Compile shaders_x & program
         self.prog = self.ctx.program(
             vertex_shader  = VERT_SHADER,
             fragment_shader= FRAG_SHADER,

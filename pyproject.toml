@@ -18,3 +18,8 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/Nitebound/Zengine"
 
+
+[options.package_data]
+zengine =
+    assets/shaders/*.vert
+    assets/shaders/*.frag
