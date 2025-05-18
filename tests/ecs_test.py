@@ -1,74 +1,89 @@
-from zengine.core.project_canvas import ProjectCanvas
-from zengine.core.scene import Scene
-from zengine.ecs.components import (
-    Transform,
-    SpriteRenderer,
-    PlayerController,
-)
-from zengine.ecs.components.camera_view import CameraView, ProjectionType
-from zengine.ecs.systems.input_system import InputSystem
-from zengine.ecs.systems.camera_controller_system import CameraControllerSystem
-from zengine.ecs.systems.camera_system import CameraSystem
-from zengine.ecs.systems.player_controller_system import PlayerControllerSystem
-from zengine.ecs.systems.render_system import RenderSystem
-from zengine.graphics.texture_loader import load_texture_2d
+from numpy import sqrt, vstack
 
-class MyGame(ProjectCanvas):
+from zengine.assets.mesh_registry import MeshRegistry
+from zengine.core.engine import Engine
+from zengine.core.scene  import Scene
+
+from zengine.ecs.components.camera import CameraComponent, ProjectionType
+from zengine.ecs.components.light  import LightComponent, LightType
+from zengine.ecs.components import Transform
+
+from zengine.ecs.systems.input_system               import InputSystem
+from zengine.ecs.systems.camera_system              import CameraSystem
+from zengine.ecs.systems.player_controller_system   import PlayerControllerSystem
+from zengine.ecs.systems.gltf_import_system         import GLTFImportSystem
+from zengine.ecs.systems.animation_system           import AnimationSystem
+from zengine.ecs.systems.skinning_system            import SkinningSystem
+from zengine.ecs.systems.skinned_mesh_render_system import SkinnedMeshRenderSystem
+
+class MyGame(Engine):
     def setup(self):
-        # 1) Create Scene and core systems
         scene = Scene()
-        input_sys = InputSystem()
-        scene.add_system(input_sys)
-
-        cam_ctrl = CameraControllerSystem(input_sys, speed=551.0)
-        scene.add_system(cam_ctrl)
+        scene.add_system(InputSystem())
         scene.add_system(CameraSystem())
-        scene.add_system(PlayerControllerSystem(input_sys))
+        scene.add_system(PlayerControllerSystem(scene.systems[0]))
 
-        # 2) Camera Entity
-        cam_ent = scene.entities.create_entity()
-        scene.active_camera = cam_ent
+        # ★ this now spawns **all** model entities for you ★
+        scene.add_system(GLTFImportSystem(
+            "assets/models/RiggedFigure.gltf",
+            self.window.ctx,
+            self.skinning_shader
+        ))
 
-        # put camera at Z=10 looking toward Z=0
-        scene.entities.add_component(cam_ent,
-            Transform(x=0.0, y=0.0, z=4.0)
-        )
-        # orthographic bounds = half-width/height around 0
-        w, h = self.window.width, self.window.height
-        scene.entities.add_component(cam_ent,
-            CameraView(
-                projection_type=ProjectionType.PERSPECTIVE,
-                left   = -w/2, right  =  w/2,
-                bottom = -h/2, top    =  h/2,
-                near   =  0.1, far    = 100.0,
-                active = True
-            )
-        )
+        scene.add_system(AnimationSystem())
+        scene.add_system(SkinningSystem())
+        scene.add_system(SkinnedMeshRenderSystem())
 
-        # 3) Player (quad + sprite)
-        player = scene.entities.create_entity()
+        # 3) Camera
+        cam = scene.entity_manager.create_entity()
+        scene.active_camera = cam
+        scene.entity_manager.add_component(cam,
+                                           Transform(x=0, y=0, z=500)
+                                           )
+        scene.entity_manager.add_component(cam,
+                                           CameraComponent(
+                                               aspect=self.window.width / self.window.height,
+                                               projection=ProjectionType.PERSPECTIVE
+                                           )
+                                           )
 
-        # load your sprite
-        tex = load_texture_2d(self.window.ctx, "assets/images/mech1.png")
+        # 3a Auto-center
+        all_verts = []
+        for mesh_key in MeshRegistry._meshes:
+            verts = MeshRegistry.get(mesh_key).vertices
+            all_verts.append(verts)
 
-        # size the quad to the texture’s pixel dims:
-        scene.entities.add_component(player,
-            Transform(
-                x=0, y=0.0, z=-1,
-                scale_x = tex.width, scale_y=tex.height, scale_z=1.0, rotation=0
-            )
-        )
+        if all_verts:
+            verts = vstack(all_verts)  # (N,3)
+            min_v = verts.min(axis=0)
+            max_v = verts.max(axis=0)
+            center = (min_v + max_v) * 0.5
+            # approximate radius as half the diagonal
+            radius = sqrt(((max_v - min_v) ** 2).sum()) * 0.5
 
-        scene.entities.add_component(player, PlayerController())
-        scene.entities.add_component(player, SpriteRenderer(tex))
+            # Now reposition the camera to sit on +Z, looking at center
+            cam = scene.active_camera
+            tr = scene.entity_manager.get_component(cam, Transform)
+            tr.x, tr.y = center[0], center[1]
+            tr.z = center[2] + radius * 2.5  # 2.5× zoom‐out
+            # zero‐out any rotation around Z so it points straight at –Z
+            tr.rot_x = tr.rot_y = tr.rot_z = 0
 
-        # 4) Rendering
-        scene.add_system(RenderSystem())
+            # And widen your far clip so you don’t clip out the model:
+            cam_comp = scene.entity_manager.get_component(cam, CameraComponent)
+            cam_comp.p_far = max(cam_comp.p_far, radius * 10)
+            cam_comp.p_near = min(cam_comp.p_near, radius * 0.1)
 
-        # 5) Register scene and go
+        # light
+        light = scene.entity_manager.create_entity()
+        scene.entity_manager.add_component(light, Transform(x=5,y=5,z=5))
+        scene.entity_manager.add_component(light, LightComponent(
+            type=LightType.POINT, color=(1,1,1), intensity=1.0
+        ))
+
         self.add_scene("main", scene, make_current=True)
 
-
 if __name__ == "__main__":
-    app = MyGame(size=(1024,768), title="ZVisger Engine")
+    app = MyGame((1024,768), "ZEngine")
+    app.setup()
     app.run()

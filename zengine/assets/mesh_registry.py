@@ -1,7 +1,6 @@
 # zengine/assets/mesh_registry.py
 
 from zengine.assets.mesh_asset import MeshAsset
-
 class MeshRegistry:
     _meshes: dict[str, MeshAsset] = {}
 

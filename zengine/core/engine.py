@@ -26,6 +26,8 @@ class Engine:
         lit_frag = shaders / "lit.frag"
         phong_vert = shaders / "phong.vert"
         phong_frag = shaders / "phong.frag"
+        skinning_vert = shaders / "skinning_phong.vert"
+        skinning_frag = shaders / "skinning_phong.frag"
 
         # load them by absolute path
         self.default_shader = Shader(
@@ -47,6 +49,12 @@ class Engine:
             self.window.ctx,
             str(phong_vert),
             str(phong_frag),
+        )
+
+        self.skinning_shader = Shader(
+            self.window.ctx,
+            str(skinning_vert),
+            str(skinning_frag)
         )
 
         # rest of your init…

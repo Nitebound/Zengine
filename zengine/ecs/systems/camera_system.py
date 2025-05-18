@@ -78,3 +78,19 @@ class CameraSystem(System):
             # 4) expose to renderer
             self.scene.active_camera = cam
             break
+
+def normalize(v):
+    return v / np.linalg.norm(v)
+
+def look_at(eye, target, up):
+    f = normalize(np.array(target) - np.array(eye))
+    s = normalize(np.cross(f, up))
+    u = np.cross(s, f)
+    M = np.eye(4, dtype='f4')
+    M[0, :3] = s
+    M[1, :3] = u
+    M[2, :3] = -f
+    # translate
+    T = np.eye(4, dtype='f4')
+    T[:3, 3] = -np.array(eye)
+    return M @ T
