@@ -137,10 +137,20 @@ def load_gltf(path: str, ctx) -> str:
         for pi, prim in enumerate(mesh.primitives or []):
             pos    = read_accessor(gltf, prim.attributes.POSITION)
             nrm    = read_accessor(gltf, prim.attributes.NORMAL)
+
             if prim.attributes.TEXCOORD_0 is not None:
                 uv = read_accessor(gltf, prim.attributes.TEXCOORD_0)
             else:
                 uv = np.zeros((pos.shape[0], 2), dtype='f4')
+
+            if prim.attributes.WEIGHTS_0 is not None:
+                weights = read_accessor(gltf, prim.attributes.WEIGHTS_0)
+                weights = weights.astype('f4').reshape(-1, 4)
+                # **Normalize weights so each vertex’s weights sum to 1**
+                row_sums = weights.sum(axis=1, keepdims=True)
+                # Avoid division by zero for vertices with no influence
+                weights = np.divide(weights, row_sums, out=np.zeros_like(weights), where=row_sums != 0)
+
             idxs = read_accessor(gltf, prim.indices).astype('i4').ravel()
 
             joints  = None
@@ -152,13 +162,13 @@ def load_gltf(path: str, ctx) -> str:
 
             key = f"{mesh_name}_prim{pi}"
             ma = MeshAsset(
-                name     = key,
-                vertices = pos.astype('f4').reshape(-1,3),
-                normals  = nrm.astype('f4').reshape(-1,3),
-                indices  = idxs,
-                uvs      = uv.astype('f4').reshape(-1,2),
-                joints   = joints,
-                weights  = weights,
+                name=key,
+                vertices=pos.astype('f4').reshape(-1, 3),
+                normals=nrm.astype('f4').reshape(-1, 3),
+                indices=idxs,
+                uvs=uv.astype('f4').reshape(-1, 2),
+                joints=joints,
+                weights=weights,
             )
             MeshRegistry.register(ma)
 
