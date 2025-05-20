@@ -32,7 +32,7 @@ class CameraSystem(System):
             # View: invert translation then invert rotation
             T_inv = np.eye(4, dtype='f4')
             T_inv[:3,3] = (-tr.x, -tr.y, -tr.z)
-            R_inv = quat_to_mat4(-tr.rot_qx, -tr.rot_qy, -tr.rot_qz, tr.rot_qw)
+            R_inv = quat_to_mat4(-tr.rotation_x, -tr.rotation_y, -tr.rotation_z, tr.rotation_w)
             view  = R_inv @ T_inv
 
             cam.projection_matrix = proj

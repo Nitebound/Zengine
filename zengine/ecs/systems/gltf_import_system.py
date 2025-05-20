@@ -52,25 +52,22 @@ class GLTFImportSystem(System):
             scene.node_map[node_idx]    = eid
             scene.node_parent[node_idx] = parent_idx
 
-            # safe defaults for T, R, S
             t = node.translation or [0.0, 0.0, 0.0]
-            s = node.scale       or [1.0, 1.0, 1.0]
-            r = node.rotation    or [0.0, 0.0, 0.0, 1.0]
+            r = node.rotation or [0.0, 0.0, 0.0, 1.0]
+            s = node.scale or [1.0, 1.0, 1.0]
 
-            # convert the quaternion to a single Z-angle if you only support 2D rotation:
-            _, _, zrot = quat_to_euler_deg(r)
-
+            # — feed the full quaternion through, not just Z —
             scene.entity_manager.add_component(eid, Transform(
                 x=float(t[0]),
                 y=float(t[1]),
                 z=float(t[2]),
+                rotation_x=float(r[0]),
+                rotation_y=float(r[1]),
+                rotation_z=float(r[2]),
+                rotation_w=float(r[3]),
                 scale_x=float(s[0]),
                 scale_y=float(s[1]),
                 scale_z=float(s[2]),
-                rot_qx = float(r[0]),
-                rot_qy=float(r[1]),
-                rot_qz=float(r[2]),
-                rot_qw=float(r[3]),
             ))
 
             # if this node has a mesh, tag it and attach materials

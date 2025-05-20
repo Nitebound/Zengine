@@ -6,6 +6,7 @@ from zengine.ecs.systems.input_system import InputSystem
 from zengine.ecs.systems.system import System
 from zengine.ecs.components import PlayerController, Transform
 
+
 class PlayerControllerSystem(System):
     def __init__(self, input_system):
         super().__init__()
@@ -40,7 +41,7 @@ class PlayerControllerSystem(System):
             tr.x += vx * pc.speed * dt
             tr.y -= vy * pc.speed * dt
             tr.z += vz * pc.speed * dt
-            tr.rot_qx += vr2 * pc.rotation_speed * dt
-            tr.rot_qz += vr * pc.rotation_speed * dt
-            tr.rot_qy += vx * pc.rotation_speed * dt
+            tr.rotation_x += vr2 * pc.rotation_speed * dt
+            tr.rotation_z += vr * pc.rotation_speed * dt
+            tr.rotation_y += vx * pc.rotation_speed * dt
 

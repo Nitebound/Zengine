@@ -8,12 +8,15 @@ class Transform:
     z: float = 0.0
 
     # Full 3D rotation stored as quaternion
-    rot_qx: float = 0.0
-    rot_qy: float = 0.0
-    rot_qz: float = 0.0
-    rot_qw: float = 1.0
+    rotation_x: float = 0.0
+    rotation_y: float = 0.0
+    rotation_z: float = 0.0
+    rotation_w: float = 1.0
 
     # Scale
     scale_x: float = 1.0
     scale_y: float = 1.0
     scale_z: float = 1.0
+
+
+
