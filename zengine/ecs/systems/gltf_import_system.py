@@ -11,6 +11,7 @@ from zengine.assets.material_registry import MaterialRegistry
 from zengine.assets.texture_registry  import TextureRegistry
 from zengine.assets.gltf_loader       import load_gltf, gltf_cache, read_inverse_bind_matrices
 
+
 def quat_to_euler_deg(q):
     x, y, z, w = q
     # roll (X axis)
@@ -25,7 +26,8 @@ def quat_to_euler_deg(q):
     t3 = 2 * (w*z + x*y)
     t4 = 1 - 2 * (y*y + z*z)
     yaw = math.atan2(t3, t4)
-    return (math.degrees(roll), math.degrees(pitch), math.degrees(yaw))
+    return math.degrees(roll), math.degrees(pitch), math.degrees(yaw)
+
 
 class GLTFImportSystem(System):
     def __init__(self, path: str, ctx, skin_shader):
@@ -58,15 +60,17 @@ class GLTFImportSystem(System):
             # convert the quaternion to a single Z-angle if you only support 2D rotation:
             _, _, zrot = quat_to_euler_deg(r)
 
-            # **Here’s the key change**: we only pass the fields that your
-            # Transform dataclass actually expects.
             scene.entity_manager.add_component(eid, Transform(
-                x        = float(t[0]),
-                y        = float(t[1]),
-                z        = float(t[2]),
-                scale_x  = float(s[0]),
-                scale_y  = float(s[1]),
-                scale_z  = float(s[2]),
+                x=float(t[0]),
+                y=float(t[1]),
+                z=float(t[2]),
+                scale_x=float(s[0]),
+                scale_y=float(s[1]),
+                scale_z=float(s[2]),
+                rot_qx = float(r[0]),
+                rot_qy=float(r[1]),
+                rot_qz=float(r[2]),
+                rot_qw=float(r[3]),
             ))
 
             # if this node has a mesh, tag it and attach materials

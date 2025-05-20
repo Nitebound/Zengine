@@ -40,6 +40,7 @@ class PlayerControllerSystem(System):
             tr.x += vx * pc.speed * dt
             tr.y -= vy * pc.speed * dt
             tr.z += vz * pc.speed * dt
-            tr.rot_qz += vr * pc.rotation_speed * dt
             tr.rot_qx += vr2 * pc.rotation_speed * dt
+            tr.rot_qz += vr * pc.rotation_speed * dt
+            tr.rot_qy += vx * pc.rotation_speed * dt
 

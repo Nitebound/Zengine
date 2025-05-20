@@ -4,9 +4,11 @@ from dataclasses import dataclass
 from enum import Enum
 import numpy as np
 
+
 class ProjectionType(Enum):
     ORTHO       = 1
     PERSPECTIVE = 2
+
 
 @dataclass
 class CameraComponent:
@@ -19,7 +21,7 @@ class CameraComponent:
     top:    float = 0.0
 
     near: float = 0.01
-    far:  float = 5000.0
+    far:  float = 9000.0
 
     # perspective-only
     fov_deg: float = 60.0
