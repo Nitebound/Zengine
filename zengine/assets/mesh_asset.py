@@ -11,3 +11,4 @@ class MeshAsset:
     uvs:      np.ndarray   # (N,2)
     joints:   np.ndarray | None = None  # (N,4) or None
     weights:  np.ndarray | None = None  # (N,4) or None
+

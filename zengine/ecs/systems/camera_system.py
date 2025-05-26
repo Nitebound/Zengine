@@ -1,6 +1,6 @@
 import numpy as np
-from zengine.ecs.systems.system   import System
-from zengine.util.quaternion      import quat_to_mat4
+from zengine.ecs.systems.system import System
+from zengine.util.quaternion import quat_to_mat4
 from zengine.ecs.components.camera import CameraComponent, ProjectionType
 from zengine.ecs.components.transform import Transform
 
@@ -12,7 +12,7 @@ class CameraSystem(System):
                 continue
             tr = self.em.get_component(eid, Transform)
 
-            # Projection
+            # — build projection matrix —
             if cam.projection is ProjectionType.PERSPECTIVE:
                 f = 1.0 / np.tan(np.radians(cam.fov_deg) * 0.5)
                 proj = np.array([
@@ -29,15 +29,17 @@ class CameraSystem(System):
                     [0,                      0,                        0,                                    1.0        ],
                 ], dtype='f4')
 
-            # View: invert translation then invert rotation
+            # — build view matrix (inverse TRS) —
             T_inv = np.eye(4, dtype='f4')
             T_inv[:3,3] = (-tr.x, -tr.y, -tr.z)
             R_inv = quat_to_mat4(-tr.rotation_x, -tr.rotation_y, -tr.rotation_z, tr.rotation_w)
             view  = R_inv @ T_inv
 
+            # store on the component
             cam.projection_matrix = proj
             cam.view_matrix       = view
             cam.vp_matrix         = proj @ view
 
-            self.scene.active_camera = cam
+            # 👉 store the **entity** ID, not the component
+            self.scene.active_camera = eid
             break
