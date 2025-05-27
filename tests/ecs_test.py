@@ -33,24 +33,21 @@ class MyGame(Engine):
         scene.add_system(input_sys)
         scene.add_system(CameraSystem())
         scene.add_system(PlayerControllerSystem(input_sys))
+        scene.add_system(RenderSystem(self.window.ctx, scene))
 
-        # 2) Camera — move it back so it can see the quad at origin
         cam = scene.entity_manager.create_entity()
         scene.active_camera = cam
         scene.entity_manager.add_component(cam,
-            Transform(x=0, y=0, z=5)    # ← z=5 so the camera sits 5 units out
-        )
+                                           Transform(x=0, y=0, z=5)  # camera sits 5 units out
+                                           )
+
         scene.entity_manager.add_component(cam,
-            CameraComponent(
-                aspect=self.window.width/self.window.height,
-                projection=ProjectionType.PERSPECTIVE
-            )
-        )
+                                           CameraComponent(
+                                               aspect=self.window.width / self.window.height,
+                                               projection=ProjectionType.PERSPECTIVE
+                                           )
+                                           )
 
-        # 3) Unified render system (handles all MeshRenderer components)
-        scene.add_system(RenderSystem(self.window.ctx, scene))
-
-        # 4) Your “cube” → rename to sprite_0 and give it a quad + texture
         sprite_0 = scene.entity_manager.create_entity()
         scene.entity_manager.add_component(sprite_0,
             Transform(x=0, y=0, z=0)
@@ -61,24 +58,29 @@ class MyGame(Engine):
 
         tex = load_texture_2d(self.window.ctx, "assets/images/img.png")
         mat = Material(
-            shader=self.phong_shader,
-            albedo=(1, 1, 1, 1),
-            ambient_strength=0.2,
-            specular_strength=0.5,
-            shininess=32.0,
-            textures={'albedoMap': tex},
-            extra_uniforms={}  # any extra per-object you need
+            shader=self.default_shader,
+            textures={'albedo': tex},
+            # toggle the flags:
+            extra_uniforms={
+                'useTexture': True,
+                'useLighting': False,  # sprites often don’t need lighting
+                'baseColor': (1.0, 1.0, 1.0, 1.0),  # fallback
+                'lightDirection': (1, 1, 1),
+                'ambientColor': (0.1, 0.1, 0.1, 1)
+            }
         )
+
         scene.entity_manager.add_component(sprite_0, mat)
+
         # (optional) if you still want movement
-        scene.entity_manager.add_component(sprite_0,
+        scene.entity_manager.add_component(cam,
             PlayerController(speed=5.0, rotation_speed=1.0)
         )
 
         # 5) Light (so phong/textured shader actually lights it)
         light = scene.entity_manager.create_entity()
         scene.entity_manager.add_component(light,
-            Transform(x=5, y=5, z=5)
+            Transform(x=0, y=5, z=0)
         )
         scene.entity_manager.add_component(light,
             LightComponent(

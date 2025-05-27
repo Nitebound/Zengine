@@ -1,17 +1,13 @@
-# zengine/ecs/systems/render_system.py
-
 import moderngl
 import numpy as np
 
-from zengine.ecs.systems.system import System
-from zengine.ecs.components import Transform, MeshFilter
-from zengine.ecs.components.material import Material   # your material dataclass :contentReference[oaicite:0]{index=0}
-from zengine.ecs.components.camera import CameraComponent
-from zengine.util.quaternion import quat_to_mat4
+from zengine.ecs.systems.system    import System
+from zengine.ecs.components         import Transform, MeshFilter, Material
+from zengine.ecs.components.camera  import CameraComponent
+from zengine.util.quaternion        import quat_to_mat4
 
 def compute_model_matrix(tr: Transform) -> np.ndarray:
-    """T · R · S from your Transform dataclass."""
-    T = np.eye(4, dtype='f4'); T[:3,3] = (tr.x, tr.y, tr.z)
+    T = np.eye(4, dtype='f4');  T[:3,3] = (tr.x, tr.y, tr.z)
     R = quat_to_mat4(tr.rotation_x, tr.rotation_y, tr.rotation_z, tr.rotation_w)
     S = np.diag([tr.scale_x, tr.scale_y, tr.scale_z, 1.0]).astype('f4')
     return T @ R @ S
@@ -23,83 +19,81 @@ class RenderSystem(System):
         self.scene      = scene
         self._vao_cache = {}
 
-        # one-time OpenGL state
+        # One‐time GL state
         self.ctx.enable(moderngl.DEPTH_TEST)
         self.ctx.enable(moderngl.CULL_FACE)
         self.ctx.front_face = 'ccw'
         self.ctx.cull_face  = 'back'
 
-    def _get_vao(self, asset, prog):
-        """Build (once) a VAO for this MeshAsset + shader program."""
-        name = asset.name
-        if name not in self._vao_cache:
-            # upload raw buffers
-            vbo = self.ctx.buffer(asset.vertices.astype('f4').tobytes())
-            nbo = self.ctx.buffer(asset.normals.astype( 'f4').tobytes())
-            tbo = self.ctx.buffer(asset.uvs.astype(     'f4').tobytes())
-            ibo = self.ctx.buffer(asset.indices.astype( 'i4').tobytes())
-            # must match your vertex shader 'in' names:
-            content = [(vbo, '3f 3f 2f', 'in_position', 'in_normal', 'in_texcoord')]
-            vao = self.ctx.vertex_array(prog, content, ibo)
-            self._vao_cache[name] = vao
-        return self._vao_cache[name]
-
     def on_update(self, dt):
-        # clear color & depth
-        self.ctx.clear(0.1, 0.1, 0.1, 1.0, depth=1.0)
+        # no drawing here—everything happens in on_render
+        pass
 
-        # camera
+    def on_render(self, renderer):
+        # (1) Engine has already cleared once in Engine.run()
+        #     so we do not clear here.
+
+        # (2) Fetch camera matrices
         cam_e  = self.scene.active_camera
         tr_cam = self.scene.entity_manager.get_component(cam_e, Transform)
         cp_cam = self.scene.entity_manager.get_component(cam_e, CameraComponent)
         proj   = cp_cam.projection_matrix
         view   = cp_cam.view_matrix
 
-        # draw all Transform + MeshFilter + Material
-        for eid in self.em.get_entities_with(Transform, MeshFilter, Material):
-            tr   = self.em.get_component(eid, Transform)
-            mf   = self.em.get_component(eid, MeshFilter)    # holds your MeshAsset :contentReference[oaicite:1]{index=1}
-            mat  = self.em.get_component(eid, Material)      # surface data
+        # (3) Draw all entities with Transform + MeshFilter + Material
+        for eid in self.scene.entity_manager.get_entities_with(Transform, MeshFilter, Material):
+            tr  = self.scene.entity_manager.get_component(eid, Transform)
+            mf  = self.scene.entity_manager.get_component(eid, MeshFilter)
+            mat = self.scene.entity_manager.get_component(eid, Material)
 
             model = compute_model_matrix(tr)
             prog  = mat.shader.program
 
-            # inside RenderSystem.on_update, after computing `model`, `proj`, `view`…
-
-            # 1) grab the Material component
-            mat = self.scene.entity_manager.get_component(eid, Material)
-            prog = mat.shader.program
-
-            # 2) set the three core matrices (must exist)
+            # Core uniforms (must exist in every shader)
             prog['projection'].write(proj.astype('f4').tobytes())
-            prog['view'].write(view.astype('f4').tobytes())
-            prog['model'].write(model.astype('f4').tobytes())
+            prog['view'].      write(view.astype('f4').tobytes())
+            prog['model'].     write(model.astype('f4').tobytes())
 
-            # 3) try binding the built‐in material properties
-            for name in ('albedo', 'ambient_strength', 'specular_strength', 'shininess'):
-                try:
-                    prog[name].value = getattr(mat, name)
-                except KeyError:
-                    # this shader simply doesn’t use that property
-                    pass
+            # Material flags & values (silently skip missing uniforms)
+            for uname, val in {
+                'useTexture':     mat.extra_uniforms.get('useTexture', False),
+                'useLighting':    mat.extra_uniforms.get('useLighting', False),
+                'baseColor':      mat.albedo,
+                'lightDirection': mat.extra_uniforms.get('lightDirection', (0,1,0)),
+                'ambientColor':   mat.extra_uniforms.get('ambientColor',   (0.1,0.1,0.1,1)),
+            }.items():
+                if uname in prog:
+                    prog[uname].value = val
 
-            # 4) bind textures by the uniform names you provided in mat.textures
+            # Bind textures by name
             for slot, (uniform_name, tex) in enumerate(mat.textures.items()):
                 tex.use(location=slot)
-                try:
+                if uniform_name in prog:
                     prog[uniform_name].value = slot
-                except KeyError:
-                    pass
 
-            # 5) finally, any truly custom extras
-            for name, val in mat.extra_uniforms.items():
-                try:
-                    prog[name].value = val
-                except KeyError:
-                    pass
+            # Extra per‐material uniforms
+            for uname, val in mat.extra_uniforms.items():
+                if uname in prog:
+                    prog[uname].value = val
 
-            # then build/fetch your VAO and call vao.render() as before
+            # Build or fetch a VAO for this MeshAsset+Program combo
+            key = (mf.asset.name, prog.glo)
+            if key not in self._vao_cache:
+                ibo = self.ctx.buffer(mf.asset.indices.astype('i4').tobytes())
+                content = [
+                    (self.ctx.buffer(mf.asset.vertices.astype('f4').tobytes()), '3f', 'in_position')
+                ]
+                if mf.asset.normals is not None:
+                    content.append((self.ctx.buffer(mf.asset.normals.astype('f4').tobytes()), '3f', 'in_normal'))
+                if mf.asset.uvs     is not None:
+                    content.append((self.ctx.buffer(mf.asset.uvs.astype('f4').tobytes()),     '2f', 'in_uv'))
+                if getattr(mf.asset, 'joints', None) is not None:
+                    content.append((self.ctx.buffer(mf.asset.joints.astype('i4').tobytes()),  '4i', 'in_joints'))
+                if getattr(mf.asset, 'weights', None) is not None:
+                    content.append((self.ctx.buffer(mf.asset.weights.astype('f4').tobytes()), '4f', 'in_weights'))
 
-            # 5) finally draw the VAO
-            vao = self._get_vao(mf.asset, prog)
-            vao.render()
+                vao = self.ctx.vertex_array(prog, content, ibo)
+                self._vao_cache[key] = vao
+
+            # Finally draw!
+            self._vao_cache[key].render()

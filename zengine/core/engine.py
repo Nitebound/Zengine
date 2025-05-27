@@ -20,14 +20,6 @@ class Engine:
         # now build absolute paths to each file
         default_vert = shaders / "basic.vert"
         default_frag = shaders / "basic.frag"
-        flat_vert = shaders / "flat_color.vert"
-        flat_frag = shaders / "flat_color.frag"
-        lit_vert = shaders / "lit.vert"
-        lit_frag = shaders / "lit.frag"
-        phong_vert = shaders / "phong.vert"
-        phong_frag = shaders / "phong.frag"
-        skinning_vert = shaders / "skinning_phong.vert"
-        skinning_frag = shaders / "skinning_phong.frag"
 
         # load them by absolute path
         self.default_shader = Shader(
@@ -35,28 +27,6 @@ class Engine:
             str(default_vert),
             str(default_frag),
         )
-        self.flat_shader = Shader(
-            self.window.ctx,
-            str(flat_vert),
-            str(flat_frag),
-        )
-        self.lit_shader = Shader(
-            self.window.ctx,
-            str(lit_vert),
-            str(lit_frag),
-        )
-        self.phong_shader = Shader(
-            self.window.ctx,
-            str(phong_vert),
-            str(phong_frag),
-        )
-
-        self.skinning_shader = Shader(
-            self.window.ctx,
-            str(skinning_vert),
-            str(skinning_frag)
-        )
-
         # rest of your init…
         self.renderer = Renderer(self.window.ctx, self.default_shader)
         self.scenes = {}
@@ -86,5 +56,6 @@ class Engine:
 
             self.window.ctx.clear(0.0, 1, 1, 1.0, depth=1.0)
             self.current.on_render(self.renderer)
+
             self.window.on_late_update(dt)
             self.current.on_late_update(dt)
