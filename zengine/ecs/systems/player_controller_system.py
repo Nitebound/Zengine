@@ -44,5 +44,3 @@ class PlayerControllerSystem(System):
             tr.rotation_x += vr2 * pc.rotation_speed * dt
             tr.rotation_z += vr * pc.rotation_speed * dt
             tr.rotation_y += vx * pc.rotation_speed * dt
-
-            print(tr.z)
