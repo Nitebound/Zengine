@@ -23,6 +23,7 @@ from zengine.ecs.systems.render_system            import RenderSystem
 from zengine.assets.default_meshes import MeshFactory
 from zengine.graphics.texture_loader import load_texture_2d
 
+import math
 
 class MyGame(Engine):
     def setup(self):
@@ -38,7 +39,7 @@ class MyGame(Engine):
         cam = scene.entity_manager.create_entity()
         scene.active_camera = cam
         scene.entity_manager.add_component(cam,
-                                           Transform(x=0, y=0, z=5)  # camera sits 5 units out
+                                           Transform(x=0, y=0, z=-5, rotation_y=math.pi/2)  # camera sits 5 units out
                                            )
 
         scene.entity_manager.add_component(cam,

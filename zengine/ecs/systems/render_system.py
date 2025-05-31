@@ -21,9 +21,11 @@ class RenderSystem(System):
 
         # One‐time GL state
         self.ctx.enable(moderngl.DEPTH_TEST)
-        self.ctx.enable(moderngl.CULL_FACE)
+      # disable back‐face culling so CCW-wound quads (like your MeshFactory.rectangle) actually draw
+        self.ctx.disable(moderngl.CULL_FACE)
+      # keep winding info in case you want to re-enable culling later
         self.ctx.front_face = 'ccw'
-        self.ctx.cull_face  = 'back'
+        self.ctx.cull_face = 'back'
 
     def on_update(self, dt):
         # no drawing here—everything happens in on_render
