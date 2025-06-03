@@ -42,6 +42,8 @@ class PlayerControllerSystem(System):
             tr.y -= vy * pc.speed * dt
             tr.z += vz * pc.speed * dt
 
+            if tr.x < -1:
+                tr.x=-1
             # 🚀 Apply Rotation (Local Space - via Quaternion)
             if vr != 0 or vr2 != 0:
                 delta_q = quat_from_euler(

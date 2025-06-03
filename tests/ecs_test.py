@@ -18,7 +18,7 @@ from zengine.ecs.systems.render_system import RenderSystem
 
 from zengine.assets.default_meshes import MeshFactory
 from zengine.graphics.texture_loader import load_texture_2d
-
+import random
 
 class MyGame(Engine):
     def setup(self):
@@ -43,37 +43,46 @@ class MyGame(Engine):
             projection=ProjectionType.PERSPECTIVE
         ))
 
-        # 3) Create Renderable Cube at origin (visible at z=0)
-        being = scene.entity_manager.create_entity()
+        tex = load_texture_2d(self.window.ctx, "assets/images/img.png")  # ✅ ensure this path is valid
 
-        # 🟢 Origin is fine now
-        scene.entity_manager.add_component(being, Transform(x=0, y=0, z=-1))
+        for i in range(1, 22):
+            # 3) Create Renderable Cube at origin (visible at z=0)
+            being = scene.entity_manager.create_entity()
 
-        # ✅ Smaller cube for visibility
-        scene.entity_manager.add_component(being, MeshFilter(MeshFactory.cube("cube", 0.10)))
-        scene.entity_manager.add_component(being, PlayerController(10))
-        # 🎨 Pure color — no texture
-        mat = Material(
-            shader=self.default_shader,
-            textures={},  # none needed
-            extra_uniforms={
-                'useTexture': False,
-                'useLighting': False,
-                'baseColor': (1.0, 0.0, 1.0, 1.0),  # Bright magenta
-            }
-        )
+            # 🟢 Origin is fine now
+            randx = -4 + i * 0.5 # Spread out cubes along X
+            randy = .5
+            scene.entity_manager.add_component(being, Transform(x=randx/4, y=randy/4, z=-1))
 
-        scene.entity_manager.add_component(being, mat)
-        scene.entity_manager.add_component(being, MeshRenderer(shader=self.default_shader))
+            # ✅ Smaller cube for visibility
+            scene.entity_manager.add_component(being, MeshFilter(MeshFactory.cube("cube", 0.10)))
+
+            if i == 1:
+                scene.entity_manager.add_component(being, PlayerController(1, rotation_speed=12))
+
+            # 🎨 Pure color — no texture
+            mat = Material(
+                shader=self.default_shader,
+                textures={"inTex": tex},  # none needed
+                extra_uniforms={
+                    'useTexture': True,
+                    'useLighting': True,
+                    'baseColor': (1.0, 1.0, 0.0, 1.0),  # Bright magenta
+                },
+                shininess=0
+            )
+
+            scene.entity_manager.add_component(being, mat)
+            scene.entity_manager.add_component(being, MeshRenderer(shader=self.default_shader))
 
         # 4) Light (optional)
-        # light = scene.entity_manager.create_entity()
-        # scene.entity_manager.add_component(light, Transform(x=0, y=10, z=10))
-        # scene.entity_manager.add_component(light, LightComponent(
-        #     type=LightType.POINT,
-        #     color=(1.0, 1.0, 1.0),
-        #     intensity=0.0
-        # ))
+        light = scene.entity_manager.create_entity()
+        scene.entity_manager.add_component(light, Transform(x=0, y=10, z=10))
+        scene.entity_manager.add_component(light, LightComponent(
+            type=LightType.POINT,
+            color=(1.0, 1.0, 1.0),
+            intensity=1.0
+        ))
 
         # 5) Launch
         self.add_scene("main", scene, make_current=True)
