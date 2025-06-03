@@ -47,7 +47,7 @@ class MyGame(Engine):
         being = scene.entity_manager.create_entity()
 
         # 🟢 Origin is fine now
-        scene.entity_manager.add_component(being, Transform(x=0, y=0, z=-1))
+        scene.entity_manager.add_component(being, Transform(x=0, y=0, z=-11))
 
         # ✅ Smaller cube for visibility
         scene.entity_manager.add_component(being, MeshFilter(MeshFactory.cube("cube", 0.10)))

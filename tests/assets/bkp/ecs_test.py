@@ -13,8 +13,7 @@ from zengine.ecs.systems.camera_system              import CameraSystem
 from zengine.ecs.systems.player_controller_system   import PlayerControllerSystem
 from zengine.ecs.systems.gltf_import_system         import GLTFImportSystem
 from zengine.ecs.systems.animation_system           import AnimationSystem
-from zengine.ecs.systems.skinning_system            import SkinningSystem
-from zengine.ecs.systems.skinned_mesh_render_system import SkinnedMeshRenderSystem
+
 
 class MyGame(Engine):
     def setup(self):
@@ -29,14 +28,12 @@ class MyGame(Engine):
         # 2) GLTF import + skinning pipeline
         #    - passes in the skinning‐capable shader loaded on Engine init
         scene.add_system(GLTFImportSystem(
-            "assets/models/RiggedFigure.gltf",
+            "../models/RiggedFigure.gltf",
             self.window.ctx,
-            self.skinning_shader
+            self.default_shader
         ))
 
         scene.add_system(AnimationSystem())
-        scene.add_system(SkinningSystem())
-        scene.add_system(SkinnedMeshRenderSystem())
 
         # 3) Camera
         cam = scene.entity_manager.create_entity()

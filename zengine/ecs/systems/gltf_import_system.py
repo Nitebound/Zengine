@@ -64,7 +64,7 @@ class GLTFImportSystem(System):
                     mesh_key = f"{mesh_def.name or 'mesh'}_prim{pi}"
                     # 1) attach MeshFilter so the renderer has the buffers
                     mesh_asset = MeshRegistry.get(mesh_key)
-                    scene.entity_manager.add_component(eid, MeshFilter(mesh=mesh_asset))
+                    scene.entity_manager.add_component(eid, MeshFilter(mesh_asset))
 
                     # 2) let the SkinnedMeshRenderSystem know this is skinned
                     mat_idx  = prim.material or 0
