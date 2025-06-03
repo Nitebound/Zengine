@@ -63,13 +63,10 @@ class MyGame(Engine):
             # 🎨 Pure color — no texture
             mat = Material(
                 shader=self.default_shader,
-                textures={"inTex": tex},  # none needed
-                extra_uniforms={
-                    'useTexture': True,
-                    'useLighting': True,
-                    'baseColor': (1.0, 1.0, 0.0, 1.0),  # Bright magenta
-                },
-                shininess=0
+                main_texture=tex,
+                albedo=(1.0, 1.0, 1.0, 1.0),
+                use_texture=True,
+                use_lighting=False
             )
 
             scene.entity_manager.add_component(being, mat)

@@ -1,5 +1,3 @@
-# zengine/ecs/systems/render_system.py
-
 import moderngl
 import numpy as np
 
@@ -46,27 +44,23 @@ class RenderSystem(System):
             model = compute_model_matrix(tr)
             prog  = mat.shader.program
 
-            if 'model' in prog:      prog['model'].write(model.T.astype('f4').tobytes())
-            if 'view' in prog:       prog['view'].write(view.T.astype('f4').tobytes())
+            # Core transforms
+            if 'model'      in prog: prog['model'].write(model.T.astype('f4').tobytes())
+            if 'view'       in prog: prog['view'].write(view.T.astype('f4').tobytes())
             if 'projection' in prog: prog['projection'].write(proj.T.astype('f4').tobytes())
 
-            for uname, val in {
-                'useTexture':     mat.extra_uniforms.get('useTexture', False),
-                'useLighting':    mat.extra_uniforms.get('useLighting', False),
-                'baseColor':      mat.albedo,
-            }.items():
+            # Material-sourced uniforms
+            for uname, val in mat.get_all_uniforms().items():
                 if uname in prog:
                     prog[uname].value = val
 
-            for slot, (uniform_name, tex) in enumerate(mat.textures.items()):
+            # Texture binding
+            for slot, (uname, tex) in enumerate(mat.get_all_textures().items()):
                 tex.use(location=slot)
-                if uniform_name in prog:
-                    prog[uniform_name].value = slot
-
-            for uname, val in mat.extra_uniforms.items():
                 if uname in prog:
-                    prog[uname].value = val
+                    prog[uname].value = slot
 
+            # VAO caching
             key = (mf.asset.name, prog.glo)
             if key not in self._vao_cache:
                 vertices = np.hstack([
