@@ -1,9 +1,12 @@
+# zengine/ecs/systems/render_system.py
+
 import moderngl
 import numpy as np
 
 from zengine.ecs.systems.system import System
 from zengine.ecs.components import Transform, MeshFilter, Material, MeshRenderer
 from zengine.ecs.components.camera import CameraComponent
+from zengine.ecs.components.light import LightComponent, LightType
 from zengine.util.quaternion import quat_to_mat4
 
 
@@ -25,8 +28,7 @@ class RenderSystem(System):
         self.ctx.disable(moderngl.CULL_FACE)
         self.ctx.front_face = 'ccw'
 
-    def on_update(self, dt):
-        pass
+    def on_update(self, dt): pass
 
     def on_render(self, renderer):
         cam_e = self.scene.active_camera
@@ -36,6 +38,13 @@ class RenderSystem(System):
         proj = cp_cam.projection_matrix
         view = cp_cam.view_matrix
 
+        # Collect lights
+        light_data = []
+        for eid in self.scene.entity_manager.get_entities_with(Transform, LightComponent):
+            light = self.scene.entity_manager.get_component(eid, LightComponent)
+            tr = self.scene.entity_manager.get_component(eid, Transform)
+            light_data.append((light, tr))
+
         for eid in self.scene.entity_manager.get_entities_with(Transform, MeshFilter, Material, MeshRenderer):
             tr  = self.scene.entity_manager.get_component(eid, Transform)
             mf  = self.scene.entity_manager.get_component(eid, MeshFilter)
@@ -44,29 +53,35 @@ class RenderSystem(System):
             model = compute_model_matrix(tr)
             prog  = mat.shader.program
 
-            # Core transforms
-            if 'model'      in prog: prog['model'].write(model.T.astype('f4').tobytes())
-            if 'view'       in prog: prog['view'].write(view.T.astype('f4').tobytes())
+            if 'model' in prog:      prog['model'].write(model.T.astype('f4').tobytes())
+            if 'view' in prog:       prog['view'].write(view.T.astype('f4').tobytes())
             if 'projection' in prog: prog['projection'].write(proj.T.astype('f4').tobytes())
 
-            # Material-sourced uniforms
+            # ✅ Pass lighting data
+            if 'light_count' in prog:
+                prog['light_count'].value = len(light_data)
+
+                for i, (light, l_tr) in enumerate(light_data[:8]):
+                    prog[f'light_type[{i}]'].value = light.type.value
+                    prog[f'light_position[{i}]'].value = (l_tr.x, l_tr.y, l_tr.z)
+                    prog[f'light_color[{i}]'].value = light.color
+                    prog[f'light_intensity[{i}]'].value = light.intensity
+
+            # Built-in material values
             for uname, val in mat.get_all_uniforms().items():
                 if uname in prog:
                     prog[uname].value = val
 
-            # Texture binding
             for slot, (uname, tex) in enumerate(mat.get_all_textures().items()):
                 tex.use(location=slot)
                 if uname in prog:
                     prog[uname].value = slot
 
-            # VAO caching
+            # Build or fetch VAO
             key = (mf.asset.name, prog.glo)
             if key not in self._vao_cache:
                 vertices = np.hstack([
-                    mf.asset.vertices,  # 3f position
-                    mf.asset.normals,   # 3f normal
-                    mf.asset.uvs        # 2f uv
+                    mf.asset.vertices, mf.asset.normals, mf.asset.uvs
                 ]).astype('f4')
 
                 vbo = self.ctx.buffer(vertices.tobytes())

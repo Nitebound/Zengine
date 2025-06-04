@@ -45,17 +45,17 @@ class MyGame(Engine):
 
         tex = load_texture_2d(self.window.ctx, "assets/images/img.png")  # ✅ ensure this path is valid
 
-        for i in range(1, 22):
+        for i in range(1, 15):
             # 3) Create Renderable Cube at origin (visible at z=0)
             being = scene.entity_manager.create_entity()
 
             # 🟢 Origin is fine now
-            randx = -4 + i * 0.5 # Spread out cubes along X
+            randx = -4 + i * 0.8 # Spread out cubes along X
             randy = .5
             scene.entity_manager.add_component(being, Transform(x=randx/4, y=randy/4, z=-1))
 
             # ✅ Smaller cube for visibility
-            scene.entity_manager.add_component(being, MeshFilter(MeshFactory.cube("cube", 0.10)))
+            scene.entity_manager.add_component(being, MeshFilter(MeshFactory.rectangle("sphere", .3,.3)))
 
             if i == 1:
                 scene.entity_manager.add_component(being, PlayerController(1, rotation_speed=12))
@@ -63,10 +63,12 @@ class MyGame(Engine):
             # 🎨 Pure color — no texture
             mat = Material(
                 shader=self.default_shader,
-                main_texture=tex,
                 albedo=(1.0, 1.0, 1.0, 1.0),
                 use_texture=True,
-                use_lighting=False
+                use_lighting=True,
+                main_texture=load_texture_2d(self.window.ctx, "assets/images/img.png"),
+                emission_color=(0.2, 0.1, 0.0, 1.0),
+                emission_intensity=0.0
             )
 
             scene.entity_manager.add_component(being, mat)
@@ -74,7 +76,7 @@ class MyGame(Engine):
 
         # 4) Light (optional)
         light = scene.entity_manager.create_entity()
-        scene.entity_manager.add_component(light, Transform(x=0, y=10, z=10))
+        scene.entity_manager.add_component(light, Transform(x=2, y=5, z=5))
         scene.entity_manager.add_component(light, LightComponent(
             type=LightType.POINT,
             color=(1.0, 1.0, 1.0),

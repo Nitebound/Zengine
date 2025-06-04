@@ -2,19 +2,17 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Tuple
+
 
 class LightType(Enum):
-    POINT       = 0
-    DIRECTIONAL = 1
+    DIRECTIONAL = 0
+    POINT       = 1
+
 
 @dataclass
 class LightComponent:
-    type: LightType = LightType.POINT
-
-    # Common light properties
-    color:     Tuple[float, float, float] = (1.0, 1.0, 1.0)
-    intensity: float                       = 1.0
-
-    # Only used for directional lights
-    direction: Tuple[float, float, float] = (0.0, -1.0, 0.0)
+    type: LightType = LightType.DIRECTIONAL
+    color: tuple = (1.0, 1.0, 1.0)
+    intensity: float = 1.0
+    range: float = 10.0  # for point lights
+    casts_shadows: bool = False  # for future extension
