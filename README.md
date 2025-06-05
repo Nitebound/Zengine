@@ -1,4 +1,4 @@
-# Z-Engine
+# Z-Engine (Name will change probably, zengine already exists.)
 A game/graphical application engine written by Zachery Visger. 
 This version is mostly meant to be used as a prototype for Z-Engine becomes a C++, OpenGL/Vulkan/... engine.
 
