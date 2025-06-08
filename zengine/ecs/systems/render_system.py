@@ -37,6 +37,7 @@ class RenderSystem(System):
 
         proj = cp_cam.projection_matrix
         view = cp_cam.view_matrix
+        camera_position = (tr_cam.x, tr_cam.y, tr_cam.z)
 
         # Collect lights
         light_data = []
@@ -53,21 +54,30 @@ class RenderSystem(System):
             model = compute_model_matrix(tr)
             prog  = mat.shader.program
 
+            # Basic matrices
             if 'model' in prog:      prog['model'].write(model.T.astype('f4').tobytes())
             if 'view' in prog:       prog['view'].write(view.T.astype('f4').tobytes())
             if 'projection' in prog: prog['projection'].write(proj.T.astype('f4').tobytes())
 
-            # ✅ Pass lighting data
+            # ✅ Camera position for lighting
+            if 'camera_position' in prog:
+                prog['camera_position'].value = camera_position
+
+            # ✅ Lighting
             if 'light_count' in prog:
                 prog['light_count'].value = len(light_data)
 
                 for i, (light, l_tr) in enumerate(light_data[:8]):
-                    prog[f'light_type[{i}]'].value = light.type.value
-                    prog[f'light_position[{i}]'].value = (l_tr.x, l_tr.y, l_tr.z)
-                    prog[f'light_color[{i}]'].value = light.color
-                    prog[f'light_intensity[{i}]'].value = light.intensity
+                    if f'light_type[{i}]' in prog:
+                        prog[f'light_type[{i}]'].value = light.type.value
+                    if f'light_position[{i}]' in prog:
+                        prog[f'light_position[{i}]'].value = (l_tr.x, l_tr.y, l_tr.z)
+                    if f'light_color[{i}]' in prog:
+                        prog[f'light_color[{i}]'].value = light.color
+                    if f'light_intensity[{i}]' in prog:
+                        prog[f'light_intensity[{i}]'].value = light.intensity
 
-            # Built-in material values
+            # Material
             for uname, val in mat.get_all_uniforms().items():
                 if uname in prog:
                     prog[uname].value = val
@@ -77,12 +87,18 @@ class RenderSystem(System):
                 if uname in prog:
                     prog[uname].value = slot
 
-            # Build or fetch VAO
+            # VAO cache
             key = (mf.asset.name, prog.glo)
             if key not in self._vao_cache:
-                vertices = np.hstack([
-                    mf.asset.vertices, mf.asset.normals, mf.asset.uvs
-                ]).astype('f4')
+                # Fix for hstack shape mismatch
+                v = mf.asset.vertices  # (N, 3)
+                n = mf.asset.normals  # (N, 3)
+                uv = mf.asset.uvs  # could be (N*2,) or (N,) — needs to be reshaped!
+
+                if uv.ndim == 1:
+                    uv = uv.reshape(-1, 2)  # Ensure it's (N, 2)
+
+                vertices = np.hstack([v, n, uv]).astype('f4')
 
                 vbo = self.ctx.buffer(vertices.tobytes())
                 ibo = self.ctx.buffer(mf.asset.indices.astype('i4').tobytes())

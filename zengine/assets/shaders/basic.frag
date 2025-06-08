@@ -1,64 +1,65 @@
 #version 330
 
-// Light types
-#define LIGHT_DIRECTIONAL 0
-#define LIGHT_POINT       1
+uniform vec3 camera_position;
 
-in vec3 frag_position;
-in vec3 frag_normal;
-in vec2 frag_uv;
+uniform int light_count;
+uniform int light_type[8];
+uniform vec3 light_position[8];
+uniform vec3 light_color[8];
+uniform float light_intensity[8];
 
-out vec4 fragColor;
-
-// MATERIAL UNIFORMS
 uniform vec4 albedo;
-uniform float metallic;
-uniform float smoothness;
 uniform float emission_intensity;
 uniform vec4 emission_color;
-
+uniform sampler2D main_texture;
 uniform bool useTexture;
 uniform bool useLighting;
+uniform vec3 u_ambient_color;
 
-// TEXTURES
-uniform sampler2D main_texture;
+in vec2 frag_uv;
+in vec3 frag_normal;
+in vec3 frag_world_pos;
 
-// LIGHT DATA
-uniform int   light_count;
-uniform vec3  light_position[16];
-uniform vec3  light_color[16];
-uniform float light_intensity[16];
-uniform int   light_type[16]; // 0 = directional, 1 = point
+out vec4 frag_color;
 
 void main() {
-    vec3 base_color = albedo.rgb;
-    if (useTexture) {
-        base_color *= texture(main_texture, frag_uv).rgb;
-    }
+    vec4 tex_color = useTexture ? texture(main_texture, frag_uv) : vec4(1.0);
+    vec3 base_color = tex_color.rgb * albedo.rgb;
 
     vec3 normal = normalize(frag_normal);
-    vec3 final_color = vec3(0.0);
+    vec3 color = vec3(0.0);
 
     if (useLighting) {
+        // Ambient light
+        color += base_color * u_ambient_color;
+
         for (int i = 0; i < light_count; ++i) {
             vec3 light_dir;
-            if (light_type[i] == LIGHT_DIRECTIONAL) {
-                light_dir = normalize(-light_position[i]); // Directional light
+            float attenuation = 1.0;
+
+            if (light_type[i] == 1) {
+                // Point light
+                vec3 to_light = light_position[i] - frag_world_pos;
+                float dist = length(to_light);
+                light_dir = normalize(to_light);
+                attenuation = 1.0 / (dist * dist + 0.01);
             } else {
-                light_dir = normalize(light_position[i] - frag_position); // Point light
+                // Directional light
+                light_dir = normalize(-light_position[i]);
+                attenuation = 1.0;
             }
 
             float diff = max(dot(normal, light_dir), 0.0);
-            final_color += diff * light_color[i] * light_intensity[i];
-        }
+            vec3 diffuse = diff * light_color[i] * light_intensity[i] * attenuation;
 
-        // Add ambient term
-        final_color += vec3(0.1); // constant ambient
-        fragColor = vec4(base_color * final_color, albedo.a);
+            color += base_color * diffuse;
+        }
     } else {
-        fragColor = vec4(base_color, albedo.a);
+        color = base_color;
     }
 
-    // Emission is always added on top
-    fragColor.rgb += emission_color.rgb * emission_intensity;
+    // Emission
+    color += emission_color.rgb * emission_intensity;
+
+    frag_color = vec4(color, albedo.a);
 }
