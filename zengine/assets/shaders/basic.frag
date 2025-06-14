@@ -1,4 +1,4 @@
-#version 330
+#version 330 core
 
 uniform vec3 camera_position;
 
@@ -30,7 +30,6 @@ void main() {
     vec3 color = vec3(0.0);
 
     if (useLighting) {
-        // Ambient light
         color += base_color * u_ambient_color;
 
         for (int i = 0; i < light_count; ++i) {
@@ -38,28 +37,22 @@ void main() {
             float attenuation = 1.0;
 
             if (light_type[i] == 1) {
-                // Point light
                 vec3 to_light = light_position[i] - frag_world_pos;
                 float dist = length(to_light);
                 light_dir = normalize(to_light);
                 attenuation = 1.0 / (dist * dist + 0.01);
             } else {
-                // Directional light
                 light_dir = normalize(-light_position[i]);
-                attenuation = 1.0;
             }
 
             float diff = max(dot(normal, light_dir), 0.0);
             vec3 diffuse = diff * light_color[i] * light_intensity[i] * attenuation;
-
             color += base_color * diffuse;
         }
     } else {
         color = base_color;
     }
 
-    // Emission
     color += emission_color.rgb * emission_intensity;
-
     frag_color = vec4(color, albedo.a);
 }

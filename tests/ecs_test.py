@@ -1,6 +1,3 @@
-from pyglet.gl import glEnable
-from pyglet.gl.gl_compat import glLightModelfv, glLightfv, GL_LIGHT_MODEL_AMBIENT
-
 from zengine.core.engine import Engine
 from zengine.core.scene import Scene
 
@@ -54,13 +51,15 @@ class MyGame(Engine):
         # 🌇 Three lit planes
         for i in range(3):
             eid = scene.entity_manager.create_entity()
+            scene.entity_manager.add_component(eid, Transform(
+                x=-0.6 + i * 0.6, y=0.0, z=0.0  # ← plane is at z=0
+            ))
+            scene.entity_manager.add_component(cam, Transform(x=0, y=0, z=1))  # ← camera behind light!
 
-            # Evenly spaced in X
             scene.entity_manager.add_component(eid, Transform(
                 x=-0.6 + i * 0.6, y=0.0, z=0.0
             ))
 
-            # Simple plane geometry
             scene.entity_manager.add_component(eid, MeshFilter(
                 asset=MeshFactory.rectangle("plane", 0.5, 0.5)
             ))
@@ -72,7 +71,7 @@ class MyGame(Engine):
                 use_texture=True,
                 use_lighting=True,
                 emission_color=(0.0, 0.0, 0.0, 1.0),
-                emission_intensity=0.0,
+                emission_intensity=1.0,
                 custom_uniforms={
                     "u_ambient_color": (0.2, 0.2, 0.2)
                 }
@@ -86,11 +85,11 @@ class MyGame(Engine):
 
         # 💡 Point Light — place near the planes!
         light = scene.entity_manager.create_entity()
-        scene.entity_manager.add_component(light, Transform(x=0.0, y=0.0, z=.2))
+        scene.entity_manager.add_component(light, Transform(x=0.0, y=-0.001, z=.001))
         scene.entity_manager.add_component(light, LightComponent(
             type=LightType.POINT,
-            color=(111.0, 1.0, 1.0),
-            intensity=1.0  # ← Bright enough!
+            color=(1.0, 1.0, 1.0),  # not 111.0
+            intensity=5.0
         ))
 
         self.add_scene("main", scene, make_current=True)

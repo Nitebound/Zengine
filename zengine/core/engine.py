@@ -7,6 +7,7 @@ from .renderer import Renderer
 from zengine.core.scene import Scene
 from ..graphics.shader import Shader
 
+
 class Engine:
     def __init__(self, size=(800, 600), title="Zengine"):
         # create window/context first
@@ -54,7 +55,7 @@ class Engine:
             now = time.time(); dt = now - last; last = now
             self.current.on_update(dt)
 
-            self.window.ctx.clear(1, 1, 1, 1.0, depth=1.0)
+            self.window.ctx.clear(-0, 0.1, 0.1, 1.0, depth=1.0)
             self.current.on_render(self.renderer)
 
             self.window.on_late_update(dt)

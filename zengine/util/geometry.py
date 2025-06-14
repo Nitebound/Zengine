@@ -2,6 +2,7 @@
 
 import numpy as np
 
+
 def rectangle(width, height):
     w, h = width/2, height/2
     verts = np.array([
@@ -13,6 +14,7 @@ def rectangle(width, height):
     idxs = np.array([0,1,2, 2,3,0], dtype='i4')
     return verts, idxs
 
+
 def triangle(width, height):
     w, h = width/2, height/2
     verts = np.array([
@@ -22,6 +24,7 @@ def triangle(width, height):
     ], dtype='f4')
     idxs = np.array([0,1,2], dtype='i4')
     return verts, idxs
+
 
 def circle(radius, segments):
     verts = [(0.0,0.0,0.0)]
