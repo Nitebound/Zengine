@@ -36,7 +36,7 @@ class WorldTest(Engine):
         # 🎥 Camera
         cam = scene.entity_manager.create_entity()
         scene.active_camera = cam
-        scene.entity_manager.add_component(cam, Transform(x=0, y=0, z=2))
+        scene.entity_manager.add_component(cam, Transform(x=0, y=0, z=4))
         scene.entity_manager.add_component(cam, CameraComponent(
             aspect=self.window.width / self.window.height,
             near=0.001,
@@ -45,16 +45,14 @@ class WorldTest(Engine):
             projection=ProjectionType.PERSPECTIVE
         ))
 
-        # 🖼 Load Texture (MUST BE VALID!)
+        # 🖼 Load Texture
         tex = load_texture_2d(self.window.ctx, "assets/images/mech1.png")
 
+        # 🧱 Sphere Mesh with Material
         eid = scene.entity_manager.create_entity()
-        scene.entity_manager.add_component(eid, Transform(
-            0, 0, 0
-        ))
-
+        scene.entity_manager.add_component(eid, Transform(0, 0, 0))
         scene.entity_manager.add_component(eid, MeshFilter(
-            asset=MeshFactory.sphere("plane", 1, 25)
+            asset=MeshFactory.sphere("sphere", 1, 25)
         ))
 
         mat = Material(
@@ -66,23 +64,21 @@ class WorldTest(Engine):
             emission_color=(0.0, 0.0, 0.0, 1.0),
             emission_intensity=0.0,
             custom_uniforms={
-                "u_ambient_color": (.6, .6, .6)
+                "u_ambient_color": (0.2, 0.2, 0.2)
             }
         )
 
         scene.entity_manager.add_component(eid, mat)
         scene.entity_manager.add_component(eid, MeshRenderer(shader=self.default_shader))
-
         scene.entity_manager.add_component(eid, PlayerController(1, rotation_speed=8))
 
-        # 💡 Point Light — place near the planes!
+        # 💡 Bright White Point Light
         light = scene.entity_manager.create_entity()
-        scene.entity_manager.add_component(light, Transform(0, 1, 2))
+        scene.entity_manager.add_component(light, Transform(0, 1, 1))
         scene.entity_manager.add_component(light, LightComponent(
             type=LightType.POINT,
-            color=(255.0, 255.0, 255.0),
-            intensity=255.0,
-
+            color=(1.0, 1.0, 1.0),
+            intensity=10
         ))
 
         self.add_scene("main", scene, make_current=True)

@@ -30,10 +30,9 @@ void main() {
     vec3 final_color = vec3(0.0);
 
     if (useLighting) {
-        // Add ambient
+        // Ambient first
         final_color += base_color * u_ambient_color;
 
-        // Loop over lights
         for (int i = 0; i < light_count; ++i) {
             vec3 light_dir;
             float attenuation = 1.0;
@@ -42,7 +41,7 @@ void main() {
                 vec3 to_light = light_position[i] - frag_world_pos;
                 float dist = length(to_light);
                 light_dir = normalize(to_light);
-                attenuation = 1.0 / (dist * dist + 0.01);  // prevent division by zero
+                attenuation = 1.0 / (dist * dist + 0.01);
             } else {
                 light_dir = normalize(-light_position[i]);
             }

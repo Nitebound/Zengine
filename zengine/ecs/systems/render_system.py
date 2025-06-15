@@ -108,10 +108,10 @@ class RenderSystem(System):
                     uv = uv.reshape(-1, 2)
 
                 vertices = np.hstack([v, n, uv]).astype('f4')
-
                 vbo = self.ctx.buffer(vertices.tobytes())
                 ibo = self.ctx.buffer(mf.asset.indices.astype('i4').tobytes())
-                content = [(vbo, '3f 3f 2f', 0, 1, 2)]
+
+                content = [(vbo, '3f 3f 2f', 'in_position', 'in_normal', 'in_uv')]
                 vao = self.ctx.vertex_array(prog, content, ibo)
                 self._vao_cache[key] = vao
 

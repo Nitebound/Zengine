@@ -14,8 +14,8 @@ out vec2 frag_uv;
 
 void main() {
     vec4 world_pos = model * vec4(in_position, 1.0);
-    frag_world_pos = (view * world_pos).xyz;
-    frag_normal = mat3(transpose(inverse(view * model))) * in_normal;
+    frag_world_pos = world_pos.xyz;
+    frag_normal = mat3(transpose(inverse(model))) * in_normal;
     frag_uv = in_uv;
     gl_Position = projection * view * world_pos;
 }
