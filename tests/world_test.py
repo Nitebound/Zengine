@@ -52,7 +52,7 @@ class WorldTest(Engine):
         eid = scene.entity_manager.create_entity()
         scene.entity_manager.add_component(eid, Transform(0, 0, 0))
         scene.entity_manager.add_component(eid, MeshFilter(
-            asset=MeshFactory.sphere("sphere", 1, 25)
+            asset=MeshFactory.sphere("sphere", 1, 5)
         ))
 
         mat = Material(
@@ -77,8 +77,8 @@ class WorldTest(Engine):
         scene.entity_manager.add_component(light, Transform(0, 1, 1))
         scene.entity_manager.add_component(light, LightComponent(
             type=LightType.POINT,
-            color=(1.0, 1.0, 1.0),
-            intensity=10
+            color=(1.0, 1.0, 1.0),  # white light
+            intensity=10.0  # reasonable brightness
         ))
 
         self.add_scene("main", scene, make_current=True)
