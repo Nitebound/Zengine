@@ -66,7 +66,7 @@ class WorldTest(Engine):
             emission_color=(0.0, 0.0, 0.0, 1.0),
             emission_intensity=0.0,
             custom_uniforms={
-                "u_ambient_color": (0.2, 0.2, 0.2)
+                "u_ambient_color": (.6, .6, .6)
             }
         )
 
@@ -77,10 +77,12 @@ class WorldTest(Engine):
 
         # 💡 Point Light — place near the planes!
         light = scene.entity_manager.create_entity()
+        scene.entity_manager.add_component(light, Transform(0, 1, 2))
         scene.entity_manager.add_component(light, LightComponent(
             type=LightType.POINT,
-            color=(0.0, 1.0, 1.0),
-            intensity=111.0
+            color=(255.0, 255.0, 255.0),
+            intensity=255.0,
+
         ))
 
         self.add_scene("main", scene, make_current=True)

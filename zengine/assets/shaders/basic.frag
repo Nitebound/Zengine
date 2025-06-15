@@ -3,7 +3,7 @@
 uniform vec3 camera_position;
 
 uniform int light_count;
-uniform int light_type[8];
+uniform int light_type[8];             // 0 = directional, 1 = point
 uniform vec3 light_position[8];
 uniform vec3 light_color[8];
 uniform float light_intensity[8];
@@ -27,11 +27,13 @@ void main() {
     vec3 base_color = tex_color.rgb * albedo.rgb;
 
     vec3 normal = normalize(frag_normal);
-    vec3 color = vec3(0.0);
+    vec3 final_color = vec3(0.0);
 
     if (useLighting) {
-        color += base_color * u_ambient_color;
+        // Add ambient
+        final_color += base_color * u_ambient_color;
 
+        // Loop over lights
         for (int i = 0; i < light_count; ++i) {
             vec3 light_dir;
             float attenuation = 1.0;
@@ -40,19 +42,20 @@ void main() {
                 vec3 to_light = light_position[i] - frag_world_pos;
                 float dist = length(to_light);
                 light_dir = normalize(to_light);
-                attenuation = 1.0 / (dist * dist + 0.01);
+                attenuation = 1.0 / (dist * dist + 0.01);  // prevent division by zero
             } else {
                 light_dir = normalize(-light_position[i]);
             }
 
             float diff = max(dot(normal, light_dir), 0.0);
             vec3 diffuse = diff * light_color[i] * light_intensity[i] * attenuation;
-            color += base_color * diffuse;
+            final_color += diffuse * base_color;
         }
     } else {
-        color = base_color;
+        final_color = base_color;
     }
 
-    color += emission_color.rgb * emission_intensity;
-    frag_color = vec4(color, albedo.a);
+    final_color += emission_color.rgb * emission_intensity;
+
+    frag_color = vec4(final_color, albedo.a);
 }

@@ -45,26 +45,27 @@ class MeshFactory:
     @staticmethod
     def sphere(name: str, radius=1.0, subdivisions=16) -> MeshAsset:
         verts, norms, uvs, idxs = [], [], [], []
-        for i in range(subdivisions+1):
+        for i in range(subdivisions + 1):
             lat = numpy.pi * i / subdivisions
             sin_t, cos_t = numpy.sin(lat), numpy.cos(lat)
-            for j in range(subdivisions+1):
+            for j in range(subdivisions + 1):
                 lon = 2 * numpy.pi * j / subdivisions
                 x = radius * sin_t * numpy.cos(lon)
                 y = radius * cos_t
                 z = radius * sin_t * numpy.sin(lon)
-                verts.append((x,y,z))
-                norm = numpy.array((x, y, z), dtype='f4')
-                norms.append(norm / numpy.linalg.norm(norm))
-                uvs.append((j/subdivisions, i/subdivisions))
-        rings = subdivisions+1
+                verts.append((x, y, z))
+                n = numpy.array((x, y, z), dtype='f4')
+                norms.append(n / numpy.linalg.norm(n))
+                uvs.append((j / subdivisions, i / subdivisions))  # 👈 Add UVs here
+        rings = subdivisions + 1
         for i in range(subdivisions):
             for j in range(subdivisions):
-                a = i*rings + j
+                a = i * rings + j
                 b = a + rings
-                idxs += [a, b, a+1,  a+1, b, b+1]
+                idxs += [a, b, a + 1, a + 1, b, b + 1]
         return MeshAsset(name,
-                         numpy.array(verts, 'f4'),
-                         numpy.array(norms, 'f4'),
-                         numpy.array(idxs, 'i4'),
-                         numpy.array(uvs, 'f4'))
+                         numpy.array(verts, dtype='f4'),
+                         numpy.array(norms, dtype='f4'),
+                         numpy.array(idxs, dtype='i4'),
+                         numpy.array(uvs, dtype='f4'))  # 👈 Make sure UVs are returned
+

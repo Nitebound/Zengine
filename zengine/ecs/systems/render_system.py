@@ -54,16 +54,13 @@ class RenderSystem(System):
             model = compute_model_matrix(tr)
             prog  = mat.shader.program
 
-            # Basic matrices
             if 'model' in prog:      prog['model'].write(model.T.astype('f4').tobytes())
             if 'view' in prog:       prog['view'].write(view.T.astype('f4').tobytes())
             if 'projection' in prog: prog['projection'].write(proj.T.astype('f4').tobytes())
 
-            # ✅ Camera position for lighting
             if 'camera_position' in prog:
                 prog['camera_position'].value = camera_position
 
-            # ✅ Lighting
             if 'light_count' in prog:
                 prog['light_count'].value = len(light_data)
 
@@ -73,17 +70,25 @@ class RenderSystem(System):
                     if f'light_position[{i}]' in prog:
                         if light.type == LightType.DIRECTIONAL:
                             rot = quat_to_mat4(l_tr.rotation_x, l_tr.rotation_y, l_tr.rotation_z, l_tr.rotation_w)
-                            dir_vec = -rot[:3, 2]  # negative Z is forward
+                            dir_vec = -rot[:3, 2]
                             prog[f'light_position[{i}]'].value = tuple(dir_vec)
                         else:
                             prog[f'light_position[{i}]'].value = (l_tr.x, l_tr.y, l_tr.z)
-
                     if f'light_color[{i}]' in prog:
                         prog[f'light_color[{i}]'].value = light.color
                     if f'light_intensity[{i}]' in prog:
                         prog[f'light_intensity[{i}]'].value = light.intensity
 
-            # Material
+            # Fallback: pass first light as raw u_light_*
+            if len(light_data) > 0:
+                light, l_tr = light_data[0]
+                if 'u_light_position' in prog:
+                    prog['u_light_position'].value = (l_tr.x, l_tr.y, l_tr.z)
+                if 'u_light_color' in prog:
+                    prog['u_light_color'].value = light.color
+                if 'u_light_intensity' in prog:
+                    prog['u_light_intensity'].value = light.intensity
+
             for uname, val in mat.get_all_uniforms().items():
                 if uname in prog:
                     prog[uname].value = val
@@ -93,22 +98,20 @@ class RenderSystem(System):
                 if uname in prog:
                     prog[uname].value = slot
 
-            # VAO cache
             key = (mf.asset.name, prog.glo)
             if key not in self._vao_cache:
-                # Fix for hstack shape mismatch
-                v = mf.asset.vertices  # (N, 3)
-                n = mf.asset.normals  # (N, 3)
-                uv = mf.asset.uvs  # could be (N*2,) or (N,) — needs to be reshaped!
+                v = mf.asset.vertices
+                n = mf.asset.normals
+                uv = mf.asset.uvs
 
                 if uv.ndim == 1:
-                    uv = uv.reshape(-1, 2)  # Ensure it's (N, 2)
+                    uv = uv.reshape(-1, 2)
 
                 vertices = np.hstack([v, n, uv]).astype('f4')
 
                 vbo = self.ctx.buffer(vertices.tobytes())
                 ibo = self.ctx.buffer(mf.asset.indices.astype('i4').tobytes())
-                content = [(vbo, '3f 3f 2f', 'in_position', 'in_normal', 'in_uv')]
+                content = [(vbo, '3f 3f 2f', 0, 1, 2)]
                 vao = self.ctx.vertex_array(prog, content, ibo)
                 self._vao_cache[key] = vao
 
