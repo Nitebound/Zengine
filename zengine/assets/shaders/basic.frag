@@ -42,20 +42,19 @@ void main() {
                 vec3 to_light = light_position[i] - frag_world_pos;
                 float dist = length(to_light);
                 light_dir = normalize(to_light);
-                attenuation = 1.0 / (dist * dist + 0.01);  // prevent division by zero
+                attenuation = 1.0 / (dist * dist + 0.01);
             } else {
                 light_dir = normalize(-light_position[i]);
             }
 
             float diff = max(dot(normal, light_dir), 0.0);
             vec3 diffuse = diff * light_color[i] * light_intensity[i] * attenuation;
-            final_color += diffuse * base_color;
+            final_color += base_color * diffuse;
         }
     } else {
         final_color = base_color;
     }
 
     final_color += emission_color.rgb * emission_intensity;
-
     frag_color = vec4(final_color, albedo.a);
 }
