@@ -21,7 +21,7 @@ from zengine.assets.default_meshes import MeshFactory
 from zengine.graphics.texture_loader import load_texture_2d
 
 
-class MyGame(Engine):
+class WorldTest(Engine):
     def setup(self):
         scene = Scene()
 
@@ -46,48 +46,40 @@ class MyGame(Engine):
         ))
 
         # 🖼 Load Texture (MUST BE VALID!)
-        tex = load_texture_2d(self.window.ctx, "assets/images/img.png")
+        tex = load_texture_2d(self.window.ctx, "assets/images/mech1.png")
 
-        # 🌇 Three lit planes
-        for i in range(3):
-            eid = scene.entity_manager.create_entity()
-            scene.entity_manager.add_component(eid, Transform(
-                x=-0.6 + i * 0.6, y=0.0, z=0.0  # ← plane is at z=0
-            ))
-            scene.entity_manager.add_component(cam, Transform(x=0, y=0, z=1))  # ← camera behind light!
+        eid = scene.entity_manager.create_entity()
+        scene.entity_manager.add_component(eid, Transform(
+            0, 0, 0
+        ))
 
-            scene.entity_manager.add_component(eid, Transform(
-                x=-0.6 + i * 0.6, y=0.0, z=0.0
-            ))
+        scene.entity_manager.add_component(eid, MeshFilter(
+            asset=MeshFactory.sphere("plane", 1, 25)
+        ))
 
-            scene.entity_manager.add_component(eid, MeshFilter(
-                asset=MeshFactory.rectangle("plane", 0.5, 0.5)
-            ))
+        mat = Material(
+            shader=self.default_shader,
+            albedo=(1.0, 1.0, 1.0, 1.0),
+            main_texture=tex,
+            use_texture=True,
+            use_lighting=True,
+            emission_color=(0.0, 0.0, 0.0, 1.0),
+            emission_intensity=0.0,
+            custom_uniforms={
+                "u_ambient_color": (0.2, 0.2, 0.2)
+            }
+        )
 
-            mat = Material(
-                shader=self.default_shader,
-                albedo=(1.0, 1.0, 1.0, 1.0),
-                main_texture=tex,
-                use_texture=True,
-                use_lighting=True,
-                emission_color=(0.0, 0.0, 0.0, 1.0),
-                emission_intensity=1.0,
-                custom_uniforms={
-                    "u_ambient_color": (0.2, 0.2, 0.2)
-                }
-            )
+        scene.entity_manager.add_component(eid, mat)
+        scene.entity_manager.add_component(eid, MeshRenderer(shader=self.default_shader))
 
-            scene.entity_manager.add_component(eid, mat)
-            scene.entity_manager.add_component(eid, MeshRenderer(shader=self.default_shader))
-
-            if i == 0:
-                scene.entity_manager.add_component(eid, PlayerController(1, rotation_speed=8))
+        scene.entity_manager.add_component(eid, PlayerController(1, rotation_speed=8))
 
         # 💡 Point Light — place near the planes!
         light = scene.entity_manager.create_entity()
         scene.entity_manager.add_component(light, LightComponent(
-            type=LightType.DIRECTIONAL,
-            color=(1.0, 1.0, 1.0),
+            type=LightType.POINT,
+            color=(0.0, 1.0, 1.0),
             intensity=111.0
         ))
 
@@ -95,6 +87,6 @@ class MyGame(Engine):
 
 
 if __name__ == "__main__":
-    app = MyGame(size=(1024, 768), title="ZEngine Lighting Test")
+    app = WorldTest(size=(1024, 768), title="ZEngine Lighting Test")
     app.setup()
     app.run()

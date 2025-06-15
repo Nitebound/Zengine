@@ -71,7 +71,13 @@ class RenderSystem(System):
                     if f'light_type[{i}]' in prog:
                         prog[f'light_type[{i}]'].value = light.type.value
                     if f'light_position[{i}]' in prog:
-                        prog[f'light_position[{i}]'].value = (l_tr.x, l_tr.y, l_tr.z)
+                        if light.type == LightType.DIRECTIONAL:
+                            rot = quat_to_mat4(l_tr.rotation_x, l_tr.rotation_y, l_tr.rotation_z, l_tr.rotation_w)
+                            dir_vec = -rot[:3, 2]  # negative Z is forward
+                            prog[f'light_position[{i}]'].value = tuple(dir_vec)
+                        else:
+                            prog[f'light_position[{i}]'].value = (l_tr.x, l_tr.y, l_tr.z)
+
                     if f'light_color[{i}]' in prog:
                         prog[f'light_color[{i}]'].value = light.color
                     if f'light_intensity[{i}]' in prog:
