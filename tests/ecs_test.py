@@ -62,7 +62,7 @@ class MyGame(Engine):
         tex_norm = load_texture_2d(self.window.ctx, "assets/images/img_norm.png")
 
         eid = scene.entity_manager.create_entity()
-        scene.entity_manager.add_component(eid, Transform(0,0,0))
+        scene.entity_manager.add_component(eid, Transform(0,0,-2))
         scene.entity_manager.add_component(eid, MeshFilter(
             MeshFactory.sphere("plane", 2, 90)
         ))
