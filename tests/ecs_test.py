@@ -54,7 +54,7 @@ class MyGame(Engine):
             type=LightType.POINT,
             color=(1.0, 1.0, 1.0),
             intensity=2.0,  # no need to overcrank it
-            range=0.80  # unused, but safe default
+            range=2  # unused, but safe default
         ))
 
         # ——— load texture & spawn plane ———
@@ -64,7 +64,7 @@ class MyGame(Engine):
         eid = scene.entity_manager.create_entity()
         scene.entity_manager.add_component(eid, Transform(0,0,0))
         scene.entity_manager.add_component(eid, MeshFilter(
-            MeshFactory.plane("plane", 1,1)
+            MeshFactory.sphere("plane", 2, 90)
         ))
 
         mat = Material(
