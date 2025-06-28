@@ -49,22 +49,22 @@ class MyGame(Engine):
 
         # ——— add a single point-light up above the plane ———
         light = scene.entity_manager.create_entity()
-        scene.entity_manager.add_component(light, Transform(0, 0, 0.5))
+        scene.entity_manager.add_component(light, Transform(0, 0, 1))
         scene.entity_manager.add_component(light, LightComponent(
             type=LightType.POINT,
             color=(1.0, 1.0, 1.0),
-            intensity=2.0,  # no need to overcrank it
-            range=2  # unused, but safe default
+            intensity=4.0,
+            range=10
         ))
 
         # ——— load texture & spawn plane ———
-        tex = load_texture_2d(self.window.ctx, "assets/images/img.png")
-        tex_norm = load_texture_2d(self.window.ctx, "assets/images/img_norm.png")
+        tex = load_texture_2d(self.window.ctx, "assets/images/158.JPG")
+        tex_norm = load_texture_2d(self.window.ctx, "assets/images/158_norm.JPG")
 
         eid = scene.entity_manager.create_entity()
-        scene.entity_manager.add_component(eid, Transform(0,0,-2))
+        scene.entity_manager.add_component(eid, Transform(0,0,-3))
         scene.entity_manager.add_component(eid, MeshFilter(
-            MeshFactory.sphere("plane", 2, 90)
+            MeshFactory.sphere("plane", 2, 32)
         ))
 
         mat = Material(
