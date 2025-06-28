@@ -3,21 +3,6 @@ from zengine.assets.mesh_asset import MeshAsset
 
 class MeshFactory:
     @staticmethod
-    def rectangle(name: str, width=1.0, height=1.0) -> MeshAsset:
-        w, h = width / 2, height / 2
-        verts = np.array([
-            [-w, -h, 0], [w, -h, 0], [w, h, 0], [-w, h, 0]
-        ], dtype='f4')
-        norms = np.array([
-            [0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1]
-        ], dtype='f4')
-        uvs = np.array([
-            [0, 0], [1, 0], [1, 1], [0, 1]
-        ], dtype='f4')
-        idxs = np.array([0, 1, 2, 2, 3, 0], dtype='i4')
-        return MeshAsset(name, verts, norms, idxs, uvs)
-
-    @staticmethod
     def cube(name: str, size=1.0) -> MeshAsset:
         s = size / 2
         corners = [(-s,-s,-s),( s,-s,-s),( s, s,-s),(-s, s,-s),
@@ -74,4 +59,37 @@ class MeshFactory:
             np.array(norms, 'f4'),
             np.array(idxs, 'i4'),
             np.array(uvs, 'f4')
+        )
+
+    @staticmethod
+    def plane(name: str, width=1.0, height=1.0) -> MeshAsset:
+        w, h = width / 2, height / 2
+
+        verts = [
+            (-w, -h, 0), (w, -h, 0), (w, h, 0), (-w, h, 0),
+            (-w, -h, 0), (w, -h, 0), (w, h, 0), (-w, h, 0),
+        ]
+        norms = [
+            (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1),
+            (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1),
+        ]
+        uvs = [
+            (0, 0), (1, 0), (1, 1), (0, 1),
+            (0, 0), (1, 0), (1, 1), (0, 1),
+        ]
+        tangents = [
+            (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0),
+            (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0),
+        ]
+        idxs = [
+            0, 1, 2, 2, 3, 0,
+            4, 6, 5, 6, 4, 7
+        ]
+        return MeshAsset(
+            name,
+            np.array(verts, 'f4'),
+            np.array(norms, 'f4'),
+            np.array(idxs, 'i4'),
+            np.array(uvs, 'f4'),
+            tangents=np.array(tangents, 'f4')
         )

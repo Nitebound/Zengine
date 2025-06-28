@@ -40,8 +40,8 @@ class MyGame(Engine):
         scene.entity_manager.add_component(cam, Transform(x=0, y=0, z=1))
         scene.entity_manager.add_component(cam, CameraComponent(
             aspect=self.window.width / self.window.height,
-            near=0.001, far=1000.0,
-            fov_deg=90.0,
+            near=0.01, far=1000.0,
+            fov_deg=60.0,
             projection=ProjectionType.PERSPECTIVE
         ))
 
@@ -49,32 +49,34 @@ class MyGame(Engine):
 
         # ——— add a single point-light up above the plane ———
         light = scene.entity_manager.create_entity()
-        scene.entity_manager.add_component(light, Transform(3,3,3))
+        scene.entity_manager.add_component(light, Transform(0, 0, 0.5))
         scene.entity_manager.add_component(light, LightComponent(
             type=LightType.POINT,
             color=(1.0, 1.0, 1.0),
-            intensity=1.5,  # no need to overcrank it
-            range=1100.0  # unused, but safe default
+            intensity=2.0,  # no need to overcrank it
+            range=0.80  # unused, but safe default
         ))
 
         # ——— load texture & spawn plane ———
         tex = load_texture_2d(self.window.ctx, "assets/images/img.png")
+        tex_norm = load_texture_2d(self.window.ctx, "assets/images/img_norm.png")
 
         eid = scene.entity_manager.create_entity()
         scene.entity_manager.add_component(eid, Transform(0,0,0))
         scene.entity_manager.add_component(eid, MeshFilter(
-            MeshFactory.cube("plane", size=1)
+            MeshFactory.plane("plane", 1,1)
         ))
 
         mat = Material(
             shader=self.default_shader,
-            main_texture=tex,
+            albedo_texture=tex,
+            normal_map=tex_norm,
             custom_uniforms={"u_ambient_color": (0.05, 0.05, 0.05)},
         )
 
         scene.entity_manager.add_component(eid, mat)
         scene.entity_manager.add_component(eid, MeshRenderer(shader=self.default_shader))
-        scene.entity_manager.add_component(eid, PlayerController(1, rotation_speed=8))
+        scene.entity_manager.add_component(eid, PlayerController(1, rotation_speed=.8))
 
         self.add_scene("main", scene, make_current=True)
 

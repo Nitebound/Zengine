@@ -38,10 +38,6 @@ def circle(radius, segments):
     idxs += [0, segments, 1]
     return verts, np.array(idxs, dtype='i4')
 
-# zengine/util/geometry.py
-
-import numpy as np
-
 def polygon(points):
     """
     points: list of (x,y) tuples in 2D
@@ -131,3 +127,5 @@ def sphere(radius, subdivisions):
     return (np.array(verts, dtype='f4'),
             np.array(norms, dtype='f4'),
             np.array(idxs, dtype='i4'))
+
+

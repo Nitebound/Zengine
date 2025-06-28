@@ -1,4 +1,5 @@
 # zengine/ecs/systems/render_system.py
+import struct
 
 import moderngl
 import numpy as np
@@ -67,6 +68,7 @@ class RenderSystem(System):
                 light_positions = []
                 light_colors = []
                 light_intensities = []
+                light_ranges = []
 
                 for light, l_tr in light_data[:MAX_LIGHTS]:
                     light_model = compute_model_matrix(l_tr)
@@ -75,6 +77,7 @@ class RenderSystem(System):
                     light_positions.extend(world_pos)
                     light_colors.extend(light.color[:3])
                     light_intensities.append(light.intensity)
+                    light_ranges.append(light.range)
 
                 # Pad arrays to expected uniform array sizes
                 while len(light_positions) < MAX_LIGHTS * 3:
@@ -83,15 +86,21 @@ class RenderSystem(System):
                     light_colors.extend((0.0, 0.0, 0.0))
                 while len(light_intensities) < MAX_LIGHTS:
                     light_intensities.append(0.0)
+                while len(light_ranges) < MAX_LIGHTS:
+                    light_ranges.append(0.001)  # prevent div/0
 
                 prog['light_position'].write(np.array(light_positions, dtype='f4').tobytes())
                 prog['light_color'].write(np.array(light_colors, dtype='f4').tobytes())
                 prog['light_intensity'].write(np.array(light_intensities, dtype='f4').tobytes())
-
+                prog['light_range'].write(np.array(light_ranges, dtype='f4').tobytes())
             # Material
             for uname, val in mat.get_all_uniforms().items():
                 if uname in prog:
-                    prog[uname].value = val
+                    # Safe uniform push: prevents textures or unsupported types from crashing
+                    try:
+                        prog[uname].value = val
+                    except (KeyError, struct.error, TypeError, AttributeError) as e:
+                        print(f"⚠️ Skipping uniform '{uname}': {e}")
 
             for slot, (uname, tex) in enumerate(mat.get_all_textures().items()):
                 tex.use(location=slot)
@@ -120,6 +129,12 @@ class RenderSystem(System):
                     fmt += ' 2f'
                     attrs.append('in_uv')
                     streams.append(uv)
+
+                t = mf.asset.tangents if hasattr(mf.asset, 'tangents') else None
+                if 'in_tangent' in prog._members and t is not None:
+                    fmt += ' 3f'
+                    attrs.append('in_tangent')
+                    streams.append(t)
 
                 vertices = np.hstack(streams).astype('f4')
 
