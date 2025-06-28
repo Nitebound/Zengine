@@ -7,18 +7,14 @@ from .renderer import Renderer
 from zengine.core.scene import Scene
 from ..graphics.shader import Shader
 
-
 class Engine:
     def __init__(self, size=(800, 600), title="Zengine"):
-        # create window/context first
         self.window = Window(size, title)
 
-        # locate the shaders_x directory inside the installed package
-        # e.g. <your-venv>/lib/python3.x/site-packages/zengine/assets/shaders_x
-        base_dir = Path(__file__).parent.parent  # .../zengine/core -> .../zengine
+        base_dir = Path(__file__).parent.parent
         shaders = base_dir / "assets" / "shaders"
 
-        # now build absolute paths to each file
+        # Absolute paths to the default shaders
         default_vert = shaders / "basic.vert"
         default_frag = shaders / "basic.frag"
 
@@ -55,7 +51,7 @@ class Engine:
             now = time.time(); dt = now - last; last = now
             self.current.on_update(dt)
 
-            self.window.ctx.clear(-0, 0.1, 0.1, 1.0, depth=1.0)
+            self.window.ctx.clear(0,0,0, depth=1.0)
             self.current.on_render(self.renderer)
 
             self.window.on_late_update(dt)

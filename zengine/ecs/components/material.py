@@ -34,14 +34,18 @@ class Material:
         """Combine built-in + custom uniforms for shader assignment."""
         data = {
             "albedo": self.albedo,
-            "metallic": self.metallic,
-            "smoothness": self.smoothness,
+            "metallic": float(self.metallic),
+            "smoothness": float(self.smoothness),
             "emission_color": self.emission_color,
-            "emission_intensity": self.emission_intensity,
-            "useTexture": self.use_texture,
-            "useLighting": self.use_lighting,
+            "emission_intensity": float(self.emission_intensity),
+            "useTexture": float(self.use_texture),
+            "useLighting": float(self.use_lighting)
         }
+
         data.update(self.custom_uniforms)
+        data["useTexture"] = float(self.use_texture)
+        data["useLighting"] = float(self.use_lighting)
+
         return data
 
     def get_all_textures(self):

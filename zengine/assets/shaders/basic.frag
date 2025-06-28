@@ -1,60 +1,45 @@
 #version 330 core
 
-uniform vec3 camera_position;
+in vec3 frag_pos;
+in vec3 frag_normal;
+in vec2 frag_uv;
 
-uniform int light_count;
-uniform int light_type[8];             // 0 = directional, 1 = point
-uniform vec3 light_position[8];
-uniform vec3 light_color[8];
-uniform float light_intensity[8];
-
-uniform vec4 albedo;
-uniform float emission_intensity;
-uniform vec4 emission_color;
 uniform sampler2D main_texture;
-uniform bool useTexture;
-uniform bool useLighting;
 uniform vec3 u_ambient_color;
 
-in vec2 frag_uv;
-in vec3 frag_normal;
-in vec3 frag_world_pos;
+uniform int   light_count;
+uniform vec3  light_position[8];
+uniform vec3  light_color[8];
+uniform float light_intensity[8];
 
 out vec4 frag_color;
 
 void main() {
-    vec4 tex_color = useTexture ? texture(main_texture, frag_uv) : vec4(1.0);
-    vec3 base_color = tex_color.rgb * albedo.rgb;
+    // Hard-reference uniform arrays to ensure GLSL compiler retains them
+vec3 _keep0 = light_position[0] + light_color[0] * light_intensity[0];
+vec3 _keep1 = light_position[1] + light_color[1] * light_intensity[1];
 
     vec3 normal = normalize(frag_normal);
-    vec3 final_color = vec3(0.0);
+    vec3 base_color = texture(main_texture, frag_uv).rgb;
 
-    if (useLighting) {
-        // Ambient first
-        final_color += base_color * u_ambient_color;
+    // Force use of uniforms by making them directly influence final output
+    vec3 debug_light = light_position[0] * 0.0001 + light_color[0] * 0.0001 + light_intensity[0] * 0.0001;
+    base_color += debug_light;  // Has minimal visual effect but ensures GPU keeps the uniforms
 
-        for (int i = 0; i < light_count; ++i) {
-            vec3 light_dir;
-            float attenuation = 1.0;
+    vec3 lighting = u_ambient_color;
 
-            if (light_type[i] == 1) {
-                vec3 to_light = light_position[i] - frag_world_pos;
-                float dist = length(to_light);
-                light_dir = normalize(to_light);
-                attenuation = 1.0 / (dist * dist + 0.01);
-            } else {
-                light_dir = normalize(-light_position[i]);
-            }
+    for (int i = 0; i < light_count; ++i) {
+        vec3 to_light = light_position[i] - frag_pos;
+        float dist = length(to_light);
+        vec3 light_dir = to_light / dist;
 
-            float diff = max(dot(normal, light_dir), 0.0);
-            vec3 diffuse = diff * light_color[i] * light_intensity[i] * attenuation;
-            final_color += diffuse * base_color;
-        }
-    } else {
-        final_color = base_color;
+        float diff = max(dot(normal, light_dir), 0.0);
+        float attenuation = 1.0 / (1.0 + 0.22 * dist + 0.20 * dist * dist);
+
+        vec3 contribution = light_color[i] * light_intensity[i] * diff * attenuation;
+        lighting += contribution;
     }
 
-    final_color += emission_color.rgb * emission_intensity;
-
-    frag_color = vec4(final_color, albedo.a);
+    vec3 final_color = base_color * lighting;
+    frag_color = vec4(final_color, 1.0);
 }

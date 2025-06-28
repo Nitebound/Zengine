@@ -47,48 +47,48 @@ class RenderSystem(System):
             light_data.append((light, tr))
 
         for eid in self.scene.entity_manager.get_entities_with(Transform, MeshFilter, Material, MeshRenderer):
-            tr  = self.scene.entity_manager.get_component(eid, Transform)
-            mf  = self.scene.entity_manager.get_component(eid, MeshFilter)
+            tr = self.scene.entity_manager.get_component(eid, Transform)
+            mf = self.scene.entity_manager.get_component(eid, MeshFilter)
             mat = self.scene.entity_manager.get_component(eid, Material)
 
             model = compute_model_matrix(tr)
-            prog  = mat.shader.program
+            prog = mat.shader.program
 
+            # Basic matrices
             if 'model' in prog:      prog['model'].write(model.T.astype('f4').tobytes())
             if 'view' in prog:       prog['view'].write(view.T.astype('f4').tobytes())
             if 'projection' in prog: prog['projection'].write(proj.T.astype('f4').tobytes())
 
-            if 'camera_position' in prog:
-                prog['camera_position'].value = camera_position
-
+            # ✅ Lighting
             if 'light_count' in prog:
                 prog['light_count'].value = len(light_data)
 
-                for i, (light, l_tr) in enumerate(light_data[:8]):
-                    if f'light_type[{i}]' in prog:
-                        prog[f'light_type[{i}]'].value = light.type.value
-                    if f'light_position[{i}]' in prog:
-                        if light.type == LightType.DIRECTIONAL:
-                            rot = quat_to_mat4(l_tr.rotation_x, l_tr.rotation_y, l_tr.rotation_z, l_tr.rotation_w)
-                            dir_vec = -rot[:3, 2]
-                            prog[f'light_position[{i}]'].value = tuple(dir_vec)
-                        else:
-                            prog[f'light_position[{i}]'].value = (l_tr.x, l_tr.y, l_tr.z)
-                    if f'light_color[{i}]' in prog:
-                        prog[f'light_color[{i}]'].value = light.color
-                    if f'light_intensity[{i}]' in prog:
-                        prog[f'light_intensity[{i}]'].value = light.intensity
+                MAX_LIGHTS = 8
+                light_positions = []
+                light_colors = []
+                light_intensities = []
 
-            # Fallback: pass first light as raw u_light_*
-            if len(light_data) > 0:
-                light, l_tr = light_data[0]
-                if 'u_light_position' in prog:
-                    prog['u_light_position'].value = (l_tr.x, l_tr.y, l_tr.z)
-                if 'u_light_color' in prog:
-                    prog['u_light_color'].value = light.color
-                if 'u_light_intensity' in prog:
-                    prog['u_light_intensity'].value = light.intensity
+                for light, l_tr in light_data[:MAX_LIGHTS]:
+                    light_model = compute_model_matrix(l_tr)
+                    world_pos = light_model[:3, 3]
 
+                    light_positions.extend(world_pos)
+                    light_colors.extend(light.color[:3])
+                    light_intensities.append(light.intensity)
+
+                # Pad arrays to expected uniform array sizes
+                while len(light_positions) < MAX_LIGHTS * 3:
+                    light_positions.extend((0.0, 0.0, 0.0))
+                while len(light_colors) < MAX_LIGHTS * 3:
+                    light_colors.extend((0.0, 0.0, 0.0))
+                while len(light_intensities) < MAX_LIGHTS:
+                    light_intensities.append(0.0)
+
+                prog['light_position'].write(np.array(light_positions, dtype='f4').tobytes())
+                prog['light_color'].write(np.array(light_colors, dtype='f4').tobytes())
+                prog['light_intensity'].write(np.array(light_intensities, dtype='f4').tobytes())
+
+            # Material
             for uname, val in mat.get_all_uniforms().items():
                 if uname in prog:
                     prog[uname].value = val
@@ -98,21 +98,48 @@ class RenderSystem(System):
                 if uname in prog:
                     prog[uname].value = slot
 
+            # VAO cache key
             key = (mf.asset.name, prog.glo)
             if key not in self._vao_cache:
                 v = mf.asset.vertices
                 n = mf.asset.normals
                 uv = mf.asset.uvs
 
-                if uv.ndim == 1:
-                    uv = uv.reshape(-1, 2)
+                fmt = '3f'
+                attrs = ['in_position']
+                streams = [v]
 
-                vertices = np.hstack([v, n, uv]).astype('f4')
+                if 'in_normal' in prog._members:
+                    fmt += ' 3f'
+                    attrs.append('in_normal')
+                    streams.append(n)
+
+                if 'in_uv' in prog._members and uv is not None:
+                    if uv.ndim == 1:
+                        uv = uv.reshape(-1, 2)
+                    fmt += ' 2f'
+                    attrs.append('in_uv')
+                    streams.append(uv)
+
+                vertices = np.hstack(streams).astype('f4')
+
                 vbo = self.ctx.buffer(vertices.tobytes())
                 ibo = self.ctx.buffer(mf.asset.indices.astype('i4').tobytes())
+                content = [(vbo, fmt, *attrs)]
 
-                content = [(vbo, '3f 3f 2f', 'in_position', 'in_normal', 'in_uv')]
                 vao = self.ctx.vertex_array(prog, content, ibo)
                 self._vao_cache[key] = vao
 
+            #     print(np.min(n), np.max(n))
+            #
+            # print("Lighting uniforms sent:")
+            # print("  → light_position:", light_positions)
+            # print("  → light_color:   ", light_colors)
+            # print("  → light_intensity:", light_intensities)
+            #
+            # print("Shader program contains:")
+            # for name in prog._members:
+            #     print("  →", name)
+
             self._vao_cache[key].render()
+
