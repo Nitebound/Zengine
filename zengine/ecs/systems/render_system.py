@@ -123,6 +123,14 @@ class RenderSystem(System):
                     attrs.append('in_normal')
                     streams.append(n)
 
+                if 'in_normal' in prog._members and mf.asset.normals is not None:
+                    print("→ Binding normals to shader")
+                    fmt += ' 3f'
+                    attrs.append('in_normal')
+                    streams.append(mf.asset.normals)
+                else:
+                    print("⚠️ Not binding normals!")
+
                 if 'in_uv' in prog._members and uv is not None:
                     if uv.ndim == 1:
                         uv = uv.reshape(-1, 2)
@@ -131,16 +139,21 @@ class RenderSystem(System):
                     streams.append(uv)
 
                 t = mf.asset.tangents if hasattr(mf.asset, 'tangents') else None
-                if 'in_tangent' in prog._members and t is not None:
+                if 'in_tangent' in prog._members and mf.asset.tangents is not None:
                     fmt += ' 3f'
                     attrs.append('in_tangent')
-                    streams.append(t)
+                    streams.append(mf.asset.tangents)
+                    print("→ Binding tangents to shader")
 
                 vertices = np.hstack(streams).astype('f4')
 
                 vbo = self.ctx.buffer(vertices.tobytes())
                 ibo = self.ctx.buffer(mf.asset.indices.astype('i4').tobytes())
                 content = [(vbo, fmt, *attrs)]
+
+                print("Normals:", np.min(mf.asset.normals), np.max(mf.asset.normals))
+                print("Shader expects:", prog._members.keys())
+                print("Mesh has normals:", mf.asset.normals.shape if mf.asset.normals is not None else None)
 
                 vao = self.ctx.vertex_array(prog, content, ibo)
                 self._vao_cache[key] = vao

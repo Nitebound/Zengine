@@ -27,19 +27,25 @@ vec4 get_albedo(vec2 uv) {
 
 
 void main() {
-    // Base shading normal
     vec3 N = normalize(frag_normal);
     vec3 T = normalize(frag_tangent);
     vec3 B = normalize(cross(N, T));
     mat3 TBN = mat3(T, B, N);
 
-    vec3 normal = N;
+    vec3 n_map = texture(normal_map, frag_uv).rgb;
+    n_map = normalize(n_map * 2.0 - 1.0);
+    vec3 normal = normalize(frag_normal);
 
-    if (u_has_normal_map) {
+    if (u_has_normal_map && length(frag_tangent) > 0.0) {
+        vec3 T = normalize(frag_tangent);
+        vec3 B = normalize(cross(normal, T));
+        mat3 TBN = mat3(T, B, normal);
+
         vec3 n_map = texture(normal_map, frag_uv).rgb;
         n_map = normalize(n_map * 2.0 - 1.0);
         normal = normalize(TBN * n_map);
     }
+
 
     vec4 base_color = get_albedo(frag_uv);
     vec3 lighting = u_ambient_color;
