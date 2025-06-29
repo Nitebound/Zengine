@@ -46,8 +46,8 @@ void main() {
         normal = normalize(TBN * n_map);
     }
 
-
-    vec4 base_color = get_albedo(frag_uv);
+    vec2 corrected_uv = vec2(frag_uv.x, 1.0 - frag_uv.y);
+    vec4 base_color = u_has_albedo_map ? texture(albedo_texture, corrected_uv) : albedo;
     vec3 lighting = u_ambient_color;
 
     for (int i = 0; i < light_count; ++i) {

@@ -17,7 +17,6 @@ from zengine.ecs.systems.input_system import InputSystem
 from zengine.ecs.systems.camera_system import CameraSystem
 from zengine.ecs.systems.player_controller_system import PlayerControllerSystem
 from zengine.ecs.systems.render_system import RenderSystem
-
 from zengine.assets.default_meshes import MeshFactory
 from zengine.graphics.texture_loader import load_texture_2d
 from zengine.assets.loaders.gltf_loader import load_gltf_model
@@ -27,7 +26,7 @@ class MyGame(Engine):
     def setup(self):
         scene = Scene()
 
-        models = load_gltf_model(self.window.ctx, "assets/models/RiggedFigure.gltf", self.default_shader)
+        models = load_gltf_model(self.window.ctx, "assets/models/human1.glb", self.default_shader)
 
         for mesh, mat in models:
             eid = scene.entity_manager.create_entity()
@@ -35,12 +34,12 @@ class MyGame(Engine):
             scene.entity_manager.add_component(eid, MeshFilter(mesh))
             scene.entity_manager.add_component(eid, mat)
             scene.entity_manager.add_component(eid, MeshRenderer(shader=self.default_shader))
+            scene.entity_manager.add_component(eid, PlayerController(1, rotation_speed=.8))
 
         # ——— core ECS systems ———
         scene.add_system(InputSystem())
         scene.add_system(CameraSystem())
         scene.add_system(PlayerControllerSystem(scene.systems[0]))
-        #scene.add_system(LightSystem(scene))
         scene.add_system(RenderSystem(self.window.ctx, scene))
 
         # ——— camera ———
@@ -62,34 +61,34 @@ class MyGame(Engine):
         scene.entity_manager.add_component(light, LightComponent(
             type=LightType.POINT,
             color=(1.0, 1.0, 1.0),
-            intensity=10.0,
-            range=110
+            intensity=2.0,
+            range=11
         ))
 
         img_index = 158
-        img_fname = f"assets/images/{img_index}.JPG"
-        img_norm_fname = f"assets/images/{img_index}_norm.JPG"
+        # img_fname = f"assets/images/{img_index}.JPG"
+        # img_norm_fname = f"assets/images/{img_index}_norm.JPG"
 
-        # ——— load texture & spawn plane ———
-        tex = load_texture_2d(self.window.ctx, img_fname)
-        tex_norm = load_texture_2d(self.window.ctx, img_norm_fname)
+        # # ——— load texture & spawn plane ———
+        # tex = load_texture_2d(self.window.ctx, img_fname)
+        # tex_norm = load_texture_2d(self.window.ctx, img_norm_fname)
 
-        # eid = scene.entity_manager.create_entity()
-        # scene.entity_manager.add_component(eid, Transform(0,0,-3))
-        # scene.entity_manager.add_component(eid, MeshFilter(
+        # player = scene.entity_manager.create_entity()
+        # scene.entity_manager.add_component(player, Transform(0,0,-3))
+        # scene.entity_manager.add_component(player, MeshFilter(
         #     MeshFactory.sphere("plane", 2, 32)
         # ))
-
-        mat = Material(
-            shader=self.default_shader,
-            albedo_texture=tex,
-            normal_map=tex_norm,
-            custom_uniforms={"u_ambient_color": (0.05, 0.05, 0.05)},
-        )
-
-        scene.entity_manager.add_component(eid, mat)
-        scene.entity_manager.add_component(eid, MeshRenderer(shader=self.default_shader))
-        scene.entity_manager.add_component(eid, PlayerController(1, rotation_speed=.8))
+        #
+        # mat = Material(
+        #     shader=self.default_shader,
+        #     albedo_texture=tex,
+        #     normal_map=tex_norm,
+        #     custom_uniforms={"u_ambient_color": (0.05, 0.05, 0.05)},
+        # )
+        #
+        # scene.entity_manager.add_component(player, mat)
+        # scene.entity_manager.add_component(player, MeshRenderer(shader=self.default_shader))
+        # scene.entity_manager.add_component(player, PlayerController(1, rotation_speed=.8))
 
         self.add_scene("main", scene, make_current=True)
 
