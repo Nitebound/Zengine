@@ -45,7 +45,7 @@ class MyGame(Engine):
         # ——— camera ———
         cam = scene.entity_manager.create_entity()
         scene.active_camera = cam
-        scene.entity_manager.add_component(cam, Transform(x=0, y=0, z=1))
+        scene.entity_manager.add_component(cam, Transform(x=0, y=0, z=3))
         scene.entity_manager.add_component(cam, CameraComponent(
             aspect=self.window.width / self.window.height,
             near=0.01, far=1000.0,
@@ -61,13 +61,13 @@ class MyGame(Engine):
         scene.entity_manager.add_component(light, LightComponent(
             type=LightType.POINT,
             color=(1.0, 1.0, 1.0),
-            intensity=2.0,
-            range=11
+            intensity=3.0,
+            range=5
         ))
 
         img_index = 158
         # img_fname = f"assets/images/{img_index}.JPG"
-        # img_norm_fname = f"assets/images/{img_index}_norm.JPG"
+        # img_norm_fname = f"assets/images/{img_index}_norm.JPG"`
 
         # # ——— load texture & spawn plane ———
         # tex = load_texture_2d(self.window.ctx, img_fname)
