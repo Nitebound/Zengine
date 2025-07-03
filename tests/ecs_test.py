@@ -2,7 +2,6 @@ import numpy
 
 from zengine.core.engine import Engine
 from zengine.core.scene import Scene
-
 from zengine.ecs.components import (
     Transform,
     PlayerController,
@@ -12,16 +11,13 @@ from zengine.ecs.components import (
 )
 from zengine.ecs.components.camera import CameraComponent, ProjectionType
 from zengine.ecs.components.light import LightComponent, LightType
-
 from zengine.ecs.systems.input_system import InputSystem
 from zengine.ecs.systems.camera_system import CameraSystem
 from zengine.ecs.systems.player_controller_system import PlayerControllerSystem
 from zengine.ecs.systems.render_system import RenderSystem
-from zengine.assets.default_meshes import MeshFactory
-from zengine.graphics.texture_loader import load_texture_2d
 from zengine.assets.loaders.gltf_loader import load_gltf_model
-
-
+import math
+from zengine.util.quaternion import from_axis_angle
 class MyGame(Engine):
     def setup(self):
         scene = Scene()
@@ -30,11 +26,19 @@ class MyGame(Engine):
 
         for mesh, mat in models:
             eid = scene.entity_manager.create_entity()
-            scene.entity_manager.add_component(eid, Transform(0, 0, 0))
+
+
+            # 90 degrees in radians
+            angle_rad = math.radians(90)
+
+            qx, qy, qz, qw = from_axis_angle((-90, 0, 0), angle_rad)
+
+            transform = Transform(0, 0, -3, rotation_x=qx, rotation_y=qy, rotation_z=qz, rotation_w=qw)
+            scene.entity_manager.add_component(eid, transform)
             scene.entity_manager.add_component(eid, MeshFilter(mesh))
             scene.entity_manager.add_component(eid, mat)
             scene.entity_manager.add_component(eid, MeshRenderer(shader=self.default_shader))
-            scene.entity_manager.add_component(eid, PlayerController(1, rotation_speed=.8))
+            scene.entity_manager.add_component(eid, PlayerController(1, rotation_speed=1))
 
         # ——— core ECS systems ———
         scene.add_system(InputSystem())
@@ -45,7 +49,7 @@ class MyGame(Engine):
         # ——— camera ———
         cam = scene.entity_manager.create_entity()
         scene.active_camera = cam
-        scene.entity_manager.add_component(cam, Transform(x=0, y=0, z=3))
+        scene.entity_manager.add_component(cam, Transform(x=0, y=0, z=0))
         scene.entity_manager.add_component(cam, CameraComponent(
             aspect=self.window.width / self.window.height,
             near=0.01, far=1000.0,
@@ -53,16 +57,13 @@ class MyGame(Engine):
             projection=ProjectionType.PERSPECTIVE
         ))
 
-
-
-        # ——— add a single point-light up above the plane ———
         light = scene.entity_manager.create_entity()
-        scene.entity_manager.add_component(light, Transform(0, 0, 2))
+        scene.entity_manager.add_component(light, Transform(0, 0, 0))
         scene.entity_manager.add_component(light, LightComponent(
             type=LightType.POINT,
             color=(1.0, 1.0, 1.0),
-            intensity=3.0,
-            range=5
+            intensity=4.0,
+            range=1000
         ))
 
         img_index = 158

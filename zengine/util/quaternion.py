@@ -1,4 +1,6 @@
 import numpy as np
+import math
+from typing import Tuple
 
 
 def quat_to_mat4(x, y, z, w):
@@ -13,6 +15,7 @@ def quat_to_mat4(x, y, z, w):
         [    2*(xz - wy),     2*(yz + wx), 1 - 2*(xx + yy), 0],
         [              0,               0,               0, 1]
     ], dtype='f4')
+
 
 def quat_from_euler(yaw, pitch, roll):
     cy = np.cos(yaw * 0.5)
@@ -43,3 +46,36 @@ def quat_mul(q1, q2):
 
 def normalize_quat(q):
     return q / np.linalg.norm(q)
+
+
+def from_axis_angle(axis: Tuple[float, float, float], angle_rad: float) -> Tuple[float, float, float, float]:
+    """
+    Convert an axis-angle rotation to a quaternion.
+
+    Parameters:
+        axis (Tuple[float, float, float]): The axis of rotation (must be a 3D vector).
+        angle_rad (float): The rotation angle in radians.
+
+    Returns:
+        Tuple[float, float, float, float]: The quaternion (x, y, z, w).
+    """
+    x, y, z = axis
+    length = math.sqrt(x * x + y * y + z * z)
+    if length == 0:
+        raise ValueError("Axis vector cannot be zero-length")
+
+    # Normalize the axis
+    x /= length
+    y /= length
+    z /= length
+
+    half_angle = angle_rad / 2.0
+    sin_half = math.sin(half_angle)
+    cos_half = math.cos(half_angle)
+
+    return (
+        x * sin_half,  # qx
+        y * sin_half,  # qy
+        z * sin_half,  # qz
+        cos_half       # qw
+    )
