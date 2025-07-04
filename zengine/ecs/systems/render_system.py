@@ -3,6 +3,7 @@ import struct
 
 import moderngl
 import numpy as np
+import math
 
 from zengine.ecs.systems.system import System
 from zengine.ecs.components import Transform, MeshFilter, Material, MeshRenderer
@@ -51,19 +52,15 @@ class RenderSystem(System):
             tr = self.scene.entity_manager.get_component(eid, Transform)
             mf = self.scene.entity_manager.get_component(eid, MeshFilter)
             mat = self.scene.entity_manager.get_component(eid, Material)
-
             model = compute_model_matrix(tr)
             prog = mat.shader.program
 
-            # Basic matrices
             if 'model' in prog:      prog['model'].write(model.T.astype('f4').tobytes())
             if 'view' in prog:       prog['view'].write(view.T.astype('f4').tobytes())
             if 'projection' in prog: prog['projection'].write(proj.T.astype('f4').tobytes())
 
-            # ✅ Lighting
             if 'light_count' in prog:
                 prog['light_count'].value = len(light_data)
-
                 MAX_LIGHTS = 8
                 light_positions = []
                 light_colors = []
@@ -73,13 +70,11 @@ class RenderSystem(System):
                 for light, l_tr in light_data[:MAX_LIGHTS]:
                     light_model = compute_model_matrix(l_tr)
                     world_pos = light_model[:3, 3]
-
                     light_positions.extend(world_pos)
                     light_colors.extend(light.color[:3])
                     light_intensities.append(light.intensity)
                     light_ranges.append(light.range)
 
-                # Pad arrays to expected uniform array sizes
                 while len(light_positions) < MAX_LIGHTS * 3:
                     light_positions.extend((0.0, 0.0, 0.0))
                 while len(light_colors) < MAX_LIGHTS * 3:
@@ -87,16 +82,15 @@ class RenderSystem(System):
                 while len(light_intensities) < MAX_LIGHTS:
                     light_intensities.append(0.0)
                 while len(light_ranges) < MAX_LIGHTS:
-                    light_ranges.append(0.001)  # prevent div/0
+                    light_ranges.append(0.001)
 
                 prog['light_position'].write(np.array(light_positions, dtype='f4').tobytes())
                 prog['light_color'].write(np.array(light_colors, dtype='f4').tobytes())
                 prog['light_intensity'].write(np.array(light_intensities, dtype='f4').tobytes())
                 prog['light_range'].write(np.array(light_ranges, dtype='f4').tobytes())
-            # Material
+
             for uname, val in mat.get_all_uniforms().items():
                 if uname in prog:
-                    # Safe uniform push: prevents textures or unsupported types from crashing
                     try:
                         prog[uname].value = val
                     except (KeyError, struct.error, TypeError, AttributeError) as e:
@@ -107,29 +101,24 @@ class RenderSystem(System):
                 if uname in prog:
                     prog[uname].value = slot
 
-            # VAO cache key
             key = (mf.asset.name, prog.glo)
             if key not in self._vao_cache:
                 v = mf.asset.vertices
                 n = mf.asset.normals
                 uv = mf.asset.uvs
+                j = mf.asset.joints
+                w = mf.asset.weights
+                t = mf.asset.tangents if hasattr(mf.asset, 'tangents') else None
 
                 fmt = '3f'
                 attrs = ['in_position']
                 streams = [v]
 
-                if 'in_normal' in prog._members:
+                if 'in_normal' in prog._members and n is not None:
                     fmt += ' 3f'
                     attrs.append('in_normal')
                     streams.append(n)
-
-                if 'in_normal' in prog._members and mf.asset.normals is not None:
                     print("→ Binding normals to shader")
-                    fmt += ' 3f'
-                    attrs.append('in_normal')
-                    streams.append(mf.asset.normals)
-                else:
-                    print("⚠️ Not binding normals!")
 
                 if 'in_uv' in prog._members and uv is not None:
                     if uv.ndim == 1:
@@ -138,36 +127,95 @@ class RenderSystem(System):
                     attrs.append('in_uv')
                     streams.append(uv)
 
-                t = mf.asset.tangents if hasattr(mf.asset, 'tangents') else None
-                if 'in_tangent' in prog._members and mf.asset.tangents is not None:
+                if 'in_tangent' in prog._members and t is not None:
                     fmt += ' 3f'
                     attrs.append('in_tangent')
-                    streams.append(mf.asset.tangents)
+                    streams.append(t)
                     print("→ Binding tangents to shader")
 
-                vertices = np.hstack(streams).astype('f4')
+                if 'in_joints' in prog._members and j is not None:
+                    fmt += ' 4f'
+                    attrs.append('in_joints')
+                    streams.append(j)
+                    print("→ Binding joints to shader")
 
+                if 'in_weights' in prog._members and w is not None:
+                    fmt += ' 4f'
+                    attrs.append('in_weights')
+                    streams.append(w)
+                    print("→ Binding weights to shader")
+
+                vertices = np.hstack(streams).astype('f4')
                 vbo = self.ctx.buffer(vertices.tobytes())
                 ibo = self.ctx.buffer(mf.asset.indices.astype('i4').tobytes())
                 content = [(vbo, fmt, *attrs)]
-
-                print("Normals:", np.min(mf.asset.normals), np.max(mf.asset.normals))
-                print("Shader expects:", prog._members.keys())
-                print("Mesh has normals:", mf.asset.normals.shape if mf.asset.normals is not None else None)
-
                 vao = self.ctx.vertex_array(prog, content, ibo)
                 self._vao_cache[key] = vao
 
-            #     print(np.min(n), np.max(n))
-            #
-            # print("Lighting uniforms sent:")
-            # print("  → light_position:", light_positions)
-            # print("  → light_color:   ", light_colors)
-            # print("  → light_intensity:", light_intensities)
-            #
-            # print("Shader program contains:")
-            # for name in prog._members:
-            #     print("  →", name)
+            # 🔗 Skinning: Compute joint_matrices[] with optional pose override
+            if hasattr(mf.asset, 'skin_asset') and mf.asset.skin_asset is not None:
+                from zengine.animation.skin_utils import compute_joint_matrices
+                from scipy.spatial.transform import Rotation as R
+
+                pose_overrides = {}
+
+                # 🧠 Override joint 6 — "arm_joint_L_2"
+                override_index = 6
+                # override = np.eye(4, dtype=np.float32)
+                # override[:3, 3] = np.array([0.0, 0.0, 0.0])
+                # pose_overrides[6] = override
+                #
+                # # pose_overrides[override_index] = override
+
+                # from scipy.spatial.transform import Rotation as R
+                # rot = R.from_euler('z', 0).as_matrix()
+                # override = np.eye(4, dtype=np.float32)
+                import time
+                # angle = np.sin(time.time() * 2.0) * 45  # oscillate between -45 and 45
+                #
+                # override[:3, :3] = angle
+                # pose_overrides[6] = override
+
+                # Inside RenderSystem, before compute_joint_matrices()
+                from scipy.spatial.transform import Rotation as R
+
+                pose_overrides = {}
+
+                # Get the original local transform of the joint
+                #joint_idx = 3  # arm_joint_L_2
+                for joint_idx in range(3,4):
+                    node = mf.asset.gltf_data.nodes[joint_idx]
+
+                    T = np.eye(4, dtype=np.float32)
+                    R_ = np.eye(4, dtype=np.float32)
+                    S = np.eye(4, dtype=np.float32)
+
+                    if node.translation:
+                        T[:3, 3] = node.translation
+                    angle = np.sin(time.time() * 2.0) * 30  # oscillate between -45 and 45
+
+                    # Apply local rotation override (e.g. 45° Z rotation)
+                    rot = R.from_euler('z', -angle, degrees=True)
+                    R_[:3, :3] = rot.as_matrix()
+
+                    if node.scale:
+                        S = np.diag(node.scale + [1.0])
+
+                    # Final local matrix = T @ R_ @ S (local-space override!)
+                    pose_overrides[joint_idx] = T @ R_ @ S
+
+                joint_matrices = compute_joint_matrices(
+                    mf.asset.gltf_data,
+                    mf.asset.skin_asset,
+                    pose_overrides=pose_overrides
+                )
+
+                # Pad to 64 matrices
+                MAX_JOINTS = 64
+                joint_matrices_padded = np.tile(np.eye(4, dtype='f4'), (MAX_JOINTS, 1)).reshape((MAX_JOINTS, 4, 4))
+                joint_matrices_padded[:len(joint_matrices)] = joint_matrices
+
+                if 'joint_matrices' in prog:
+                    prog['joint_matrices'].write(joint_matrices_padded.flatten().astype('f4').tobytes())
 
             self._vao_cache[key].render()
-

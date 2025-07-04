@@ -18,13 +18,15 @@ from zengine.ecs.systems.render_system import RenderSystem
 from zengine.assets.loaders.gltf_loader import load_gltf_model
 import math
 from zengine.util.quaternion import from_axis_angle
+
+
 class MyGame(Engine):
     def setup(self):
         scene = Scene()
 
         models = load_gltf_model(self.window.ctx, "assets/models/human1.glb", self.default_shader)
 
-        for mesh, mat in models:
+        for mesh, mat, skin in models:
             eid = scene.entity_manager.create_entity()
 
 
