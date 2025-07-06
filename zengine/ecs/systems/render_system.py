@@ -182,27 +182,27 @@ class RenderSystem(System):
                 pose_overrides = {}
 
                 # Get the original local transform of the joint
-                #joint_idx = 3  # arm_joint_L_2
-                for joint_idx in range(3,4):
-                    node = mf.asset.gltf_data.nodes[joint_idx]
+                joint_idx = 4  # arm_joint_L_2
+                # for joint_idx in range(4, 5):
+                node = mf.asset.gltf_data.nodes[joint_idx]
+                print("Joint:", joint_idx, node.name)
+                T = np.eye(4, dtype=np.float32)
+                R_ = np.eye(4, dtype=np.float32)
+                S = np.eye(4, dtype=np.float32)
 
-                    T = np.eye(4, dtype=np.float32)
-                    R_ = np.eye(4, dtype=np.float32)
-                    S = np.eye(4, dtype=np.float32)
+                if node.translation:
+                    T[:3, 3] = node.translation
+                angle = np.sin(time.time() * 2.0) * 30  # oscillate between -45 and 45
 
-                    if node.translation:
-                        T[:3, 3] = node.translation
-                    angle = np.sin(time.time() * 2.0) * 30  # oscillate between -45 and 45
+                # Apply local rotation override (e.g. 45° Z rotation)
+                rot = R.from_euler('z', -angle, degrees=True)
+                R_[:3, :3] = rot.as_matrix()
 
-                    # Apply local rotation override (e.g. 45° Z rotation)
-                    rot = R.from_euler('z', -angle, degrees=True)
-                    R_[:3, :3] = rot.as_matrix()
+                if node.scale:
+                    S = np.diag(node.scale + [1.0])
 
-                    if node.scale:
-                        S = np.diag(node.scale + [1.0])
-
-                    # Final local matrix = T @ R_ @ S (local-space override!)
-                    pose_overrides[joint_idx] = T @ R_ @ S
+                # Final local matrix = T @ R_ @ S (local-space override!)
+                pose_overrides[joint_idx] = T @ R_ @ S
 
                 joint_matrices = compute_joint_matrices(
                     mf.asset.gltf_data,

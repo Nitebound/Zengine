@@ -18,6 +18,7 @@ from zengine.ecs.systems.render_system import RenderSystem
 from zengine.assets.loaders.gltf_loader import load_gltf_model
 import math
 from zengine.util.quaternion import from_axis_angle
+from zengine.ecs.systems.debug_render_system import DebugRenderSystem
 
 
 class MyGame(Engine):
@@ -48,6 +49,11 @@ class MyGame(Engine):
         scene.add_system(PlayerControllerSystem(scene.systems[0]))
         scene.add_system(RenderSystem(self.window.ctx, scene))
 
+        debug_system = DebugRenderSystem(self.window.ctx, scene)
+        scene.add_system(debug_system)
+        debug_system.set_enabled("grid", True)
+        debug_system.set_enabled("axes", True)
+
         # ——— camera ———
         cam = scene.entity_manager.create_entity()
         scene.active_camera = cam
@@ -67,31 +73,6 @@ class MyGame(Engine):
             intensity=4.0,
             range=1000
         ))
-
-        img_index = 158
-        # img_fname = f"assets/images/{img_index}.JPG"
-        # img_norm_fname = f"assets/images/{img_index}_norm.JPG"`
-
-        # # ——— load texture & spawn plane ———
-        # tex = load_texture_2d(self.window.ctx, img_fname)
-        # tex_norm = load_texture_2d(self.window.ctx, img_norm_fname)
-
-        # player = scene.entity_manager.create_entity()
-        # scene.entity_manager.add_component(player, Transform(0,0,-3))
-        # scene.entity_manager.add_component(player, MeshFilter(
-        #     MeshFactory.sphere("plane", 2, 32)
-        # ))
-        #
-        # mat = Material(
-        #     shader=self.default_shader,
-        #     albedo_texture=tex,
-        #     normal_map=tex_norm,
-        #     custom_uniforms={"u_ambient_color": (0.05, 0.05, 0.05)},
-        # )
-        #
-        # scene.entity_manager.add_component(player, mat)
-        # scene.entity_manager.add_component(player, MeshRenderer(shader=self.default_shader))
-        # scene.entity_manager.add_component(player, PlayerController(1, rotation_speed=.8))
 
         self.add_scene("main", scene, make_current=True)
 

@@ -15,8 +15,8 @@ class Engine:
         shaders = base_dir / "assets" / "shaders"
 
         # Absolute paths to the default shaders
-        default_vert = shaders / "basic.vert"
-        default_frag = shaders / "basic.frag"
+        default_vert = shaders / "basic_vert.glsl"
+        default_frag = shaders / "basic_frag.glsl"
 
         # load them by absolute path
         self.default_shader = Shader(
@@ -24,6 +24,15 @@ class Engine:
             str(default_vert),
             str(default_frag),
         )
+
+        debug_vert = shaders / "debug_vert.glsl"
+        debug_frag = shaders / "debug_frag.glsl"
+        self.debug_shader = Shader(
+            self.window.ctx,
+            str(debug_vert),
+            str(debug_frag),
+        )
+
         # rest of your init…
         self.renderer = Renderer(self.window.ctx, self.default_shader)
         self.scenes = {}
