@@ -25,7 +25,7 @@ class MyGame(Engine):
     def setup(self):
         scene = Scene()
 
-        models = load_gltf_model(self.window.ctx, "assets/models/human1.glb", self.default_shader)
+        models = load_gltf_model(self.window.ctx, "assets/models/ArmRigTest.glb", self.default_shader)
 
         for mesh, mat, skin in models:
             eid = scene.entity_manager.create_entity()

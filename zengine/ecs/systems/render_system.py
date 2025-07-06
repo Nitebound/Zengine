@@ -182,7 +182,7 @@ class RenderSystem(System):
                 pose_overrides = {}
 
                 # Get the original local transform of the joint
-                joint_idx = 4  # arm_joint_L_2
+                joint_idx = 2  # arm_joint_L_2
                 # for joint_idx in range(4, 5):
                 node = mf.asset.gltf_data.nodes[joint_idx]
                 print("Joint:", joint_idx, node.name)
