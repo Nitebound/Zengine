@@ -139,17 +139,21 @@ class RenderSystem(System):
                     attrs.append('in_uv')
                     streams.append(uv)
 
-                if 'in_tangent' in prog._members and t is not None:
+                if 'in_tangent' in prog._members:
+                    if t is None:
+                        t = np.zeros((v.shape[0], 3), dtype='f4')  # fallback
                     fmt += ' 3f'
                     attrs.append('in_tangent')
                     streams.append(t)
 
-                if 'in_joints' in prog._members and j is not None:
+                if 'in_joints' in prog._members:
+                    j = np.zeros((v.shape[0], 4), dtype='f4')
                     fmt += ' 4f'
                     attrs.append('in_joints')
                     streams.append(j)
 
-                if 'in_weights' in prog._members and w is not None:
+                if 'in_weights' in prog._members:
+                    w = np.zeros((v.shape[0], 4), dtype='f4')
                     fmt += ' 4f'
                     attrs.append('in_weights')
                     streams.append(w)
@@ -199,7 +203,13 @@ class RenderSystem(System):
                 joint_matrices_padded = np.tile(np.eye(4, dtype='f4'), (MAX_JOINTS, 1)).reshape((MAX_JOINTS, 4, 4))
                 joint_matrices_padded[:len(joint_matrices)] = joint_matrices
 
-                if 'joint_matrices' in prog:
-                    prog['joint_matrices'].write(joint_matrices_padded.flatten().astype('f4').tobytes())
+                if 'joint_matrices' in prog and not hasattr(mf.asset, 'skin_asset'):
+                    identity_joints = np.tile(np.eye(4, dtype='f4'), (64, 1)).flatten()
+                    prog['joint_matrices'].write(identity_joints.tobytes())
+
+            print("Rendering:", mf.asset.name)
+            print("Vertices:", mf.asset.vertices.shape)
+            print("Indices:", mf.asset.indices.shape)
+            print("Shader uniforms:", list(prog._members.keys()))
 
             vao.render()

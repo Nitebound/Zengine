@@ -131,7 +131,7 @@ class MyGame(Engine):
 
         # Ensure default_shader is not None before assigning
         if self.default_shader:
-            scene.entity_manager.add_component(boxid, Material(albedo=(1.0, 1, 1, 1.0), shader=self.default_shader, use_texture=False))
+            scene.entity_manager.add_component(boxid, Material(albedo=(1.0, 1, 1, 1.0), shader=self.default_shader, use_texture=False, use_lighting=True))
             scene.entity_manager.add_component(boxid, MeshRenderer(shader=self.default_shader))
         else:
             print("WARNING: default_shader not loaded, cube might not render.")
@@ -171,15 +171,15 @@ class MyGame(Engine):
 
         scene.entity_manager.add_component(cam, PlayerController(1, rotation_speed=1))
 
-        # # — simple white point‑light out in front —
-        # light = scene.entity_manager.create_entity()
-        # scene.entity_manager.add_component(light, Transform(x=0.0, y=1.0, z=0.0)) # Light is above the cube
-        # scene.entity_manager.add_component(light, LightComponent(
-        #     type=LightType.POINT,
-        #     color=(1.0, 1.0, 1.0),
-        #     intensity=5.0,
-        #     range=200.0,
-        # ))
+        # — simple white point‑light out in front —
+        light = scene.entity_manager.create_entity()
+        scene.entity_manager.add_component(light, Transform(x=0.0, y=1.0, z=0.0)) # Light is above the cube
+        scene.entity_manager.add_component(light, LightComponent(
+            type=LightType.POINT,
+            color=(1.0, 1.0, 1.0),
+            intensity=5.0,
+            range=200.0,
+        ))
 
         self.add_scene("main", scene, make_current=True)
 

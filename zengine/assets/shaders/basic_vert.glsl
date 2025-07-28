@@ -21,20 +21,21 @@ mat4 get_skin_matrix() {
     mat4 skin = mat4(0.0);
     for (int i = 0; i < 4; ++i) {
         int joint = int(in_joints[i]);
-        skin += joint_matrices[joint] * in_weights[i];
+        if (joint >= 0 && joint < 64)
+            skin += joint_matrices[joint] * in_weights[i];
     }
     return skin;
 }
 
 void main() {
-    mat4 skin_mat = get_skin_matrix();
+    // If all weights are zero, skip skinning
+    bool apply_skinning = dot(in_weights, vec4(1.0)) > 0.001;
+    mat4 skin_mat = apply_skinning ? get_skin_matrix() : mat4(1.0);
 
-    // Apply skinning to position, normal, tangent
     vec4 skinned_pos = skin_mat * vec4(in_position, 1.0);
     vec3 skinned_normal = mat3(skin_mat) * in_normal;
     vec3 skinned_tangent = mat3(skin_mat) * in_tangent;
 
-    // Final world position
     vec4 world_pos = model * skinned_pos;
 
     frag_pos = world_pos.xyz;
