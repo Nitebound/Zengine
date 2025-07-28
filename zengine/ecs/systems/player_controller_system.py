@@ -25,7 +25,6 @@ class PlayerControllerSystem(System):
         for eid in self.em.get_entities_with(PlayerController, Transform):
             pc = self.em.get_component(eid, PlayerController)
             tr = self.em.get_component(eid, Transform)
-
             vx = self.input.get_axis("horizontal")
             vy = self.input.get_axis("vertical")
             vz = self.input.get_axis("depth")
@@ -44,6 +43,7 @@ class PlayerControllerSystem(System):
 
             if tr.x < -1:
                 tr.x=-1
+
             # 🚀 Apply Rotation (Local Space - via Quaternion)
             if vr != 0 or vr2 != 0:
                 delta_q = quat_from_euler(
@@ -59,5 +59,5 @@ class PlayerControllerSystem(System):
                 ])
                 result_q = quat_mul(current_q, delta_q)
                 result_q = normalize_quat(result_q)
-
                 tr.rotation_x, tr.rotation_y, tr.rotation_z, tr.rotation_w = result_q
+                print(result_q)

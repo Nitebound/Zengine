@@ -59,7 +59,7 @@ class App:
         self.update_view()
 
         # Load texture
-        img = Image.open("assets/images/mech1.png").transpose(Image.FLIP_TOP_BOTTOM)
+        img = Image.open("../assets/images/mech1.png").transpose(Image.FLIP_TOP_BOTTOM)
         tex = self.ctx.texture(img.size, 4, img.convert("RGBA").tobytes())
         tex.filter = moderngl.NEAREST, moderngl.NEAREST
         self.texture = tex
@@ -72,6 +72,7 @@ class App:
              0.5,  0.5,  0.0, 1.0, 1.0,
             -0.5,  0.5,  0.0, 0.0, 1.0,
         ], dtype='f4')
+
         idxs = np.array([0,1,2, 2,3,0], dtype='i4')
         self.vbo = self.ctx.buffer(verts.tobytes())
         self.ibo = self.ctx.buffer(idxs.tobytes())

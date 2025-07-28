@@ -1,40 +1,54 @@
-# zengine/core/engine.py
 import time
 from pathlib import Path
 
 from .window   import Window
 from .renderer import Renderer
 from zengine.core.scene import Scene
-from ..graphics.shader import Shader
+from zengine.graphics.shader import Shader # Ensure Shader is imported
 
 class Engine:
     def __init__(self, size=(800, 600), title="Zengine"):
         self.window = Window(size, title)
+        self.window.ctx.clear(0.0, 0.0, 0.0, depth=1.0) # Clear once on init
 
-        base_dir = Path(__file__).parent.parent
-        shaders = base_dir / "assets" / "shaders"
+        # --- CRITICAL FIX: Initialize shaders correctly here ---
+        # Base directory for shaders, using your specified path structure
+        shader_dir = Path(__file__).parent.parent / "assets" / "shaders"
 
-        # Absolute paths to the default shaders
-        default_vert = shaders / "basic_vert.glsl"
-        default_frag = shaders / "basic_frag.glsl"
+        # Load default_shader (for main game objects, like your cube)
+        default_vert_path = shader_dir / "basic_vert.glsl"
+        default_frag_path = shader_dir / "basic_frag.glsl"
+        try:
+            self.default_shader = Shader(
+                self.window.ctx,
+                str(default_vert_path),
+                str(default_frag_path),
+            )
+            print(f"Loaded default_shader from: {default_vert_path}, {default_frag_path}")
+            print("Default Shader Log:")
+            print(self.default_shader.program)
+        except Exception as e:
+            print(f"ERROR: Failed to load default_shader: {e}")
+            self.default_shader = None # Set to None to prevent further errors
 
-        # load them by absolute path
-        self.default_shader = Shader(
-            self.window.ctx,
-            str(default_vert),
-            str(default_frag),
-        )
+        # Load debug_shader (for gizmos)
+        debug_vert_path = shader_dir / "debug_vert.glsl"
+        debug_frag_path = shader_dir / "debug_frag.glsl"
+        try:
+            self.debug_shader = Shader(
+                self.window.ctx,
+                str(debug_vert_path),
+                str(debug_frag_path),
+            )
+            print(f"Loaded debug_shader from: {debug_vert_path}, {debug_frag_path}")
+            print("Debug Shader Log:")
+            print(self.debug_shader.program)
+        except Exception as e:
+            print(f"ERROR: Failed to load debug_shader: {e}")
+            self.debug_shader = None # Set to None to prevent further errors
 
-        debug_vert = shaders / "debug_vert.glsl"
-        debug_frag = shaders / "debug_frag.glsl"
-        self.debug_shader = Shader(
-            self.window.ctx,
-            str(debug_vert),
-            str(debug_frag),
-        )
 
-        # rest of your init…
-        self.renderer = Renderer(self.window.ctx, self.default_shader)
+        self.renderer = Renderer(self.window.ctx, self.default_shader) # Renderer uses default_shader
         self.scenes = {}
         self.current = None
 
@@ -60,8 +74,10 @@ class Engine:
             now = time.time(); dt = now - last; last = now
             self.current.on_update(dt)
 
-            self.window.ctx.clear(0,0,0, depth=1.0)
+            # Clear the screen each frame
+            self.window.ctx.clear(100, 100, 100, depth=1.0) # Black background, clear depth
             self.current.on_render(self.renderer)
 
             self.window.on_late_update(dt)
             self.current.on_late_update(dt)
+

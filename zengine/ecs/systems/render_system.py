@@ -1,5 +1,6 @@
 # zengine/ecs/systems/render_system.py
 import struct
+import time
 
 import moderngl
 import numpy as np
@@ -10,7 +11,8 @@ from zengine.ecs.components import Transform, MeshFilter, Material, MeshRenderer
 from zengine.ecs.components.camera import CameraComponent
 from zengine.ecs.components.light import LightComponent, LightType
 from zengine.util.quaternion import quat_to_mat4
-
+from zengine.animation.skin_utils import compute_joint_matrices
+from scipy.spatial.transform import Rotation as R
 
 def compute_model_matrix(tr: Transform) -> np.ndarray:
     T = np.eye(4, dtype='f4'); T[:3, 3] = (tr.x, tr.y, tr.z)
@@ -39,7 +41,7 @@ class RenderSystem(System):
 
         proj = cp_cam.projection_matrix
         view = cp_cam.view_matrix
-        camera_position = (tr_cam.x, tr_cam.y, tr_cam.z)
+        camera_position = (tr_cam.x, tr_cam.y, tr_cam.z) # Get camera's world position
 
         # Collect lights
         light_data = []
@@ -58,6 +60,11 @@ class RenderSystem(System):
             if 'model' in prog:      prog['model'].write(model.T.astype('f4').tobytes())
             if 'view' in prog:       prog['view'].write(view.T.astype('f4').tobytes())
             if 'projection' in prog: prog['projection'].write(proj.T.astype('f4').tobytes())
+            # Pass camera position to the shader for specular calculations
+            if 'camera_position' in prog: prog['camera_position'].write(np.array(camera_position, dtype='f4').tobytes())
+            # Pass ambient color to the shader
+            if 'u_ambient_color' in prog: prog['u_ambient_color'].value = (0.1, 0.1, 0.1) # Or make this configurable
+
 
             if 'light_count' in prog:
                 prog['light_count'].value = len(light_data)
@@ -75,6 +82,7 @@ class RenderSystem(System):
                     light_intensities.append(light.intensity)
                     light_ranges.append(light.range)
 
+                # Pad light arrays to MAX_LIGHTS to avoid shader errors if less lights are present
                 while len(light_positions) < MAX_LIGHTS * 3:
                     light_positions.extend((0.0, 0.0, 0.0))
                 while len(light_colors) < MAX_LIGHTS * 3:
@@ -82,7 +90,7 @@ class RenderSystem(System):
                 while len(light_intensities) < MAX_LIGHTS:
                     light_intensities.append(0.0)
                 while len(light_ranges) < MAX_LIGHTS:
-                    light_ranges.append(0.001)
+                    light_ranges.append(0.001) # Use a small non-zero range to avoid division by zero in shader
 
                 prog['light_position'].write(np.array(light_positions, dtype='f4').tobytes())
                 prog['light_color'].write(np.array(light_colors, dtype='f4').tobytes())
@@ -92,7 +100,11 @@ class RenderSystem(System):
             for uname, val in mat.get_all_uniforms().items():
                 if uname in prog:
                     try:
-                        prog[uname].value = val
+                        # Ensure tuples are converted to numpy arrays for writing to uniforms if needed
+                        if isinstance(val, tuple):
+                            prog[uname].value = np.array(val, dtype='f4')
+                        else:
+                            prog[uname].value = val
                     except (KeyError, struct.error, TypeError, AttributeError) as e:
                         print(f"⚠️ Skipping uniform '{uname}': {e}")
 
@@ -114,11 +126,11 @@ class RenderSystem(System):
                 attrs = ['in_position']
                 streams = [v]
 
+                # Dynamically add attributes based on what the shader program expects
                 if 'in_normal' in prog._members and n is not None:
                     fmt += ' 3f'
                     attrs.append('in_normal')
                     streams.append(n)
-                    print("→ Binding normals to shader")
 
                 if 'in_uv' in prog._members and uv is not None:
                     if uv.ndim == 1:
@@ -131,78 +143,51 @@ class RenderSystem(System):
                     fmt += ' 3f'
                     attrs.append('in_tangent')
                     streams.append(t)
-                    print("→ Binding tangents to shader")
 
                 if 'in_joints' in prog._members and j is not None:
                     fmt += ' 4f'
                     attrs.append('in_joints')
                     streams.append(j)
-                    print("→ Binding joints to shader")
 
                 if 'in_weights' in prog._members and w is not None:
                     fmt += ' 4f'
                     attrs.append('in_weights')
                     streams.append(w)
-                    print("→ Binding weights to shader")
 
-                vertices = np.hstack(streams).astype('f4')
-                vbo = self.ctx.buffer(vertices.tobytes())
+                # Concatenate all vertex data streams horizontally
+                if len(streams) > 0:
+                    vertices_combined = np.hstack(streams).astype('f4')
+                else:
+                    vertices_combined = v.astype('f4') # Only position if no other streams
+
+                vbo = self.ctx.buffer(vertices_combined.tobytes())
                 ibo = self.ctx.buffer(mf.asset.indices.astype('i4').tobytes())
                 content = [(vbo, fmt, *attrs)]
                 vao = self.ctx.vertex_array(prog, content, ibo)
                 self._vao_cache[key] = vao
+            else:
+                vao = self._vao_cache[key] # Retrieve from cache
 
             # 🔗 Skinning: Compute joint_matrices[] with optional pose override
             if hasattr(mf.asset, 'skin_asset') and mf.asset.skin_asset is not None:
-                from zengine.animation.skin_utils import compute_joint_matrices
-                from scipy.spatial.transform import Rotation as R
-
                 pose_overrides = {}
 
-                # 🧠 Override joint 6 — "arm_joint_L_2"
-                override_index = 6
-                # override = np.eye(4, dtype=np.float32)
-                # override[:3, 3] = np.array([0.0, 0.0, 0.0])
-                # pose_overrides[6] = override
-                #
-                # # pose_overrides[override_index] = override
+                joint_idx = 2  # Example joint index from your original code
+                if joint_idx < len(mf.asset.gltf_data.nodes):
+                    node = mf.asset.gltf_data.nodes[joint_idx]
 
-                # from scipy.spatial.transform import Rotation as R
-                # rot = R.from_euler('z', 0).as_matrix()
-                # override = np.eye(4, dtype=np.float32)
-                import time
-                # angle = np.sin(time.time() * 2.0) * 45  # oscillate between -45 and 45
-                #
-                # override[:3, :3] = angle
-                # pose_overrides[6] = override
+                    T = np.eye(4, dtype=np.float32)
+                    R_ = np.eye(4, dtype=np.float32)
+                    S = np.eye(4, dtype=np.float32)
 
-                # Inside RenderSystem, before compute_joint_matrices()
-                from scipy.spatial.transform import Rotation as R
+                    if node.translation:
+                        T[:3, 3] = node.translation
 
-                pose_overrides = {}
+                    angle = np.sin(time.time() * 45.0) * 1.1
+                    rot = R.from_euler('x', -angle, degrees=True)
+                    R_[:3, :3] = rot.as_matrix()
 
-                # Get the original local transform of the joint
-                joint_idx = 2  # arm_joint_L_2
-                # for joint_idx in range(4, 5):
-                node = mf.asset.gltf_data.nodes[joint_idx]
-                print("Joint:", joint_idx, node.name)
-                T = np.eye(4, dtype=np.float32)
-                R_ = np.eye(4, dtype=np.float32)
-                S = np.eye(4, dtype=np.float32)
-
-                if node.translation:
-                    T[:3, 3] = node.translation
-                angle = np.sin(time.time() * 2.0) * 30  # oscillate between -45 and 45
-
-                # Apply local rotation override (e.g. 45° Z rotation)
-                rot = R.from_euler('z', -angle, degrees=True)
-                R_[:3, :3] = rot.as_matrix()
-
-                if node.scale:
-                    S = np.diag(node.scale + [1.0])
-
-                # Final local matrix = T @ R_ @ S (local-space override!)
-                pose_overrides[joint_idx] = T @ R_ @ S
+                    pose_overrides[joint_idx] = T @ R_ @ S
 
                 joint_matrices = compute_joint_matrices(
                     mf.asset.gltf_data,
@@ -210,7 +195,6 @@ class RenderSystem(System):
                     pose_overrides=pose_overrides
                 )
 
-                # Pad to 64 matrices
                 MAX_JOINTS = 64
                 joint_matrices_padded = np.tile(np.eye(4, dtype='f4'), (MAX_JOINTS, 1)).reshape((MAX_JOINTS, 4, 4))
                 joint_matrices_padded[:len(joint_matrices)] = joint_matrices
@@ -218,4 +202,4 @@ class RenderSystem(System):
                 if 'joint_matrices' in prog:
                     prog['joint_matrices'].write(joint_matrices_padded.flatten().astype('f4').tobytes())
 
-            self._vao_cache[key].render()
+            vao.render()
