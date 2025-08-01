@@ -63,7 +63,7 @@ class RenderSystem(System):
             # Pass camera position to the shader for specular calculations
             if 'camera_position' in prog: prog['camera_position'].write(np.array(camera_position, dtype='f4').tobytes())
             # Pass ambient color to the shader
-            if 'u_ambient_color' in prog: prog['u_ambient_color'].value = (0.1, 0.1, 0.1) # Or make this configurable
+            if 'u_ambient_color' in prog: prog['u_ambient_color'].value = (0.0, 0.0, 0.0) # Or make this configurable
 
 
             if 'light_count' in prog:
@@ -206,10 +206,5 @@ class RenderSystem(System):
                 if 'joint_matrices' in prog and not hasattr(mf.asset, 'skin_asset'):
                     identity_joints = np.tile(np.eye(4, dtype='f4'), (64, 1)).flatten()
                     prog['joint_matrices'].write(identity_joints.tobytes())
-
-            print("Rendering:", mf.asset.name)
-            print("Vertices:", mf.asset.vertices.shape)
-            print("Indices:", mf.asset.indices.shape)
-            print("Shader uniforms:", list(prog._members.keys()))
 
             vao.render()

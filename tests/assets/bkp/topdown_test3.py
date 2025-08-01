@@ -1,3 +1,4 @@
+import math
 import numpy
 
 from zengine.assets.mesh_asset import MeshAsset
@@ -11,17 +12,18 @@ from zengine.ecs.components import (
     MeshRenderer,
     Material,
 )
-from zengine.ecs.components.free_roam_camera_controller import FreeRoamCameraController
-from zengine.ecs.systems.free_roam_camera_controller_system import FreeRoamCameraControllerSystem
 from zengine.ecs.components.camera import CameraComponent, ProjectionType
 from zengine.ecs.components.light import LightComponent, LightType
 from zengine.ecs.systems.input_system import InputSystem
 from zengine.ecs.systems.camera_system import CameraSystem
+from zengine.ecs.systems.player_controller_system import PlayerControllerSystem
 from zengine.ecs.systems.debug_render_system import DebugRenderSystem
 from zengine.ecs.systems.render_system import RenderSystem
+from zengine.graphics.shader import Shader # Import Shader
+
+from pathlib import Path # Import Path for shader loading
 
 from zengine.graphics.texture_loader import load_texture_2d
-from zengine.ecs.systems.free_roam_camera_controller_system import FreeRoamCameraControllerSystem
 
 
 class MyGame(Engine):
@@ -122,27 +124,25 @@ class MyGame(Engine):
         ], dtype=numpy.uint32)
 
         scene = Scene()
-        mesh_texture = load_texture_2d(self.window.ctx, "./assets/images/159.JPG")
-        mesh_normal = load_texture_2d(self.window.ctx, "./assets/images/159_norm.JPG")
-        input_sys = scene.get_system(InputSystem)
 
         # Create the MeshAsset instance
         mesh = MeshAsset("box", vertices, normals, indices, uvs)
 
-        width = 6
-        for x in range(int(-width/2), int(width/2)):
-            for y in range(int(-width/2), int(width/2)):
-                # --- Create and configure the cube entity ---
-                tile = scene.entity_manager.create_entity()
-                scene.entity_manager.add_component(tile, Transform(x=x*.600, y=y*.600, z=0))
-                scene.entity_manager.add_component(tile, MeshFilter(mesh))
-                scene.entity_manager.add_component(tile, Material(albedo_texture=mesh_texture, normal_map=mesh_normal, use_texture=True, shader=self.default_shader))
-                scene.entity_manager.add_component(tile, MeshRenderer(shader=self.default_shader))
+        # --- Create and configure the cube entity ---
+        boxid = scene.entity_manager.create_entity()
+        scene.entity_manager.add_component(boxid, Transform(x=0.0, y=0.0, z=0))
+        scene.entity_manager.add_component(boxid, MeshFilter(mesh))
+
+        mesh_texture = load_texture_2d(self.window.ctx, "../images/199.JPG")
+
+        scene.entity_manager.add_component(boxid, Material(albedo_texture=mesh_texture, use_texture=True, shader=self.default_shader))
+        scene.entity_manager.add_component(boxid, MeshRenderer(shader=self.default_shader))
+
 
         # — core systems —
         scene.add_system(InputSystem())
         scene.add_system(CameraSystem())
-        scene.add_system(FreeRoamCameraControllerSystem(input_sys))
+        scene.add_system(PlayerControllerSystem(scene.systems[0]))
         render_sys = RenderSystem(self.window.ctx, scene)
         scene.add_system(render_sys)
 
@@ -165,11 +165,11 @@ class MyGame(Engine):
             fov_deg=60.0,
             projection=ProjectionType.PERSPECTIVE
         ))
-        scene.entity_manager.add_component(cam, FreeRoamCameraController(11, 1))
+        scene.entity_manager.add_component(cam, PlayerController(10, rotation_speed=1))
 
         # Create a point light in the scene
         light = scene.entity_manager.create_entity()
-        scene.entity_manager.add_component(light, Transform(x=0.0, y=0.0, z=2.0))
+        scene.entity_manager.add_component(light, Transform(x=0.0, y=1.0, z=2.0))
         scene.entity_manager.add_component(light, LightComponent(
             type=LightType.POINT,
             color=(1.0, 1.0, 1.0),
@@ -177,7 +177,7 @@ class MyGame(Engine):
             range=12.0,
         ))
 
-        #scene.entity_manager.add_component(light, PlayerController(11, rotation_speed=1))
+        # scene.entity_manager.add_component(light, PlayerController(11, rotation_speed=1))
 
         self.add_scene("main", scene, make_current=True)
 

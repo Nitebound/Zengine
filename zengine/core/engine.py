@@ -24,9 +24,7 @@ class Engine:
                 str(default_vert_path),
                 str(default_frag_path),
             )
-            print(f"Loaded default_shader from: {default_vert_path}, {default_frag_path}")
-            print("Default Shader Log:")
-            print(self.default_shader.program)
+
         except Exception as e:
             print(f"ERROR: Failed to load default_shader: {e}")
             self.default_shader = None # Set to None to prevent further errors
@@ -40,9 +38,6 @@ class Engine:
                 str(debug_vert_path),
                 str(debug_frag_path),
             )
-            print(f"Loaded debug_shader from: {debug_vert_path}, {debug_frag_path}")
-            print("Debug Shader Log:")
-            print(self.debug_shader.program)
         except Exception as e:
             print(f"ERROR: Failed to load debug_shader: {e}")
             self.debug_shader = None # Set to None to prevent further errors
@@ -75,7 +70,7 @@ class Engine:
             self.current.on_update(dt)
 
             # Clear the screen each frame
-            self.window.ctx.clear(100, 100, 100, depth=1.0) # Black background, clear depth
+            self.window.ctx.clear(.3,.3,.3, depth=1.0) # Black background, clear depth
             self.current.on_render(self.renderer)
 
             self.window.on_late_update(dt)

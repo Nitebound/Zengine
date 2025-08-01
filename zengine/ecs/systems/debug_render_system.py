@@ -11,6 +11,19 @@ from zengine.graphics.shader import Shader
 from zengine.util.quaternion import quat_to_mat4 # Assuming this path is correct based on your RenderSystem
 
 
+def translate_matrix(offset):
+    mat = np.eye(4, dtype='f4')
+    mat[:3, 3] = offset
+    return mat
+
+
+def scale_matrix(scale):
+    mat = np.eye(4, dtype='f4')
+    mat[0, 0], mat[1, 1], mat[2, 2] = scale
+    return mat
+
+
+
 # Helper function to compute a model matrix from a Transform component.
 # This is crucial for positioning and orienting debug elements.
 # Copied from your RenderSystem for self-containment, but ideally shared.
@@ -83,7 +96,7 @@ class DebugRenderSystem(System):
         Initializes the VAO for drawing a large floor grid on the XY plane (Z=0).
         The grid is composed of lines parallel to the X and Y axes.
         """
-        size = 50.0 # Grid extends from -size to +size on X and Y
+        size = 16.0 # Grid extends from -size to +size on X and Y
         step = 1.0  # Spacing between grid lines
         lines = []
         # Generate lines parallel to the Y-axis (fixed X, varying Y, Z=0)
@@ -195,15 +208,11 @@ class DebugRenderSystem(System):
 
             # Render a bounding box for the entity's transform if enabled.
             if self.enabled["bounding_boxes"] and self._bbox_vao is not None:
-                self.draw_bounding_box(tr, proj, view)
+                self.draw_bounding_box(eid, tr, proj, view)
 
     def draw_grid(self, proj: np.ndarray, view: np.ndarray):
-        """
-        Draws the floor grid.
-        """
+
         prog = self.grid_shader.program
-        # Pass the view and projection matrices to the shader.
-        # The grid itself is at the world origin, so its model matrix is identity.
         if 'view' in prog:       prog['view'].write(view.T.astype('f4').tobytes())
         if 'projection' in prog: prog['projection'].write(proj.T.astype('f4').tobytes())
         if 'model' in prog:      prog['model'].write(np.eye(4, dtype='f4').T.tobytes()) # Grid is at world origin
@@ -236,21 +245,33 @@ class DebugRenderSystem(System):
         if 'color' in prog: prog['color'].value = (0.0, 0.0, 1.0) # Blue
         self._axes_vao.render(moderngl.LINES, vertices=2, first=4) # Next 2 vertices are Z-axis
 
-    def draw_bounding_box(self, tr: Transform, proj: np.ndarray, view: np.ndarray):
-        """
-        Draws a wireframe bounding box around the given Transform component.
-        The box will be scaled and positioned according to the transform.
-        """
-        prog = self.bbox_shader.program
-        # Compute the model matrix for the bounding box based on the entity's transform.
-        # This will scale, rotate, and translate the unit cube VAO.
-        model = compute_model_matrix(tr)
+    def draw_bounding_box(self, eid, tr: Transform, proj: np.ndarray, view: np.ndarray):
+        from zengine.ecs.components import MeshFilter
 
-        # Pass the model, view, and projection matrices to the shader.
+        # Try to get the actual mesh bounds
+        mf = self.scene.entity_manager.get_component(eid, MeshFilter)
+
+        if mf:
+            v = mf.asset.vertices
+            if v is not None and len(v) > 0:
+                min_bounds = np.min(v, axis=0)
+                max_bounds = np.max(v, axis=0)
+                center = (min_bounds + max_bounds) * 0.5
+                size = (max_bounds - min_bounds)
+
+                # Center the unit cube and scale it to fit the mesh
+                model = compute_model_matrix(tr)
+                model = model @ translate_matrix(center) @ scale_matrix(size)
+            else:
+                model = compute_model_matrix(tr)
+        else:
+            model = compute_model_matrix(tr)
+
+        prog = self.bbox_shader.program
         if 'model' in prog:      prog['model'].write(model.T.astype('f4').tobytes())
         if 'view' in prog:       prog['view'].write(view.T.astype('f4').tobytes())
         if 'projection' in prog: prog['projection'].write(proj.T.astype('f4').tobytes())
-        if 'color' in prog:      prog['color'].value = (1.0, 1.0, 0.0) # Yellow for bounding box
+        if 'color' in prog:      prog['color'].value = (1.0, 1.0, 0.0)
         self._bbox_vao.render(moderngl.LINES)
 
     def set_enabled(self, name: str, state: bool = True):
@@ -261,4 +282,5 @@ class DebugRenderSystem(System):
             self.enabled[name] = state
         else:
             print(f"Warning: Debug feature '{name}' not recognized.")
+
 

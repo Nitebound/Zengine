@@ -16,6 +16,21 @@ def quat_to_mat4(x, y, z, w):
         [              0,               0,               0, 1]
     ], dtype='f4')
 
+def quat_to_forward(x, y, z, w):
+    """Returns the forward (-Z) direction vector from a quaternion."""
+    mat = quat_to_mat4(x, y, z, w)
+    return -mat[:3, 2]
+
+def quat_to_right(x, y, z, w):
+    """Returns the right (+X) direction vector from a quaternion."""
+    mat = quat_to_mat4(x, y, z, w)
+    return mat[:3, 0]
+
+def quat_to_up(x, y, z, w):
+    """Returns the up (+Y) direction vector from a quaternion."""
+    mat = quat_to_mat4(x, y, z, w)
+    return mat[:3, 1]
+
 
 def quat_from_euler(yaw, pitch, roll):
     cy = np.cos(yaw * 0.5)

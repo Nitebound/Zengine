@@ -1,8 +1,6 @@
 import math
 import numpy
 
-from zengine.graphics.texture_loader import load_texture_2d
-from zengine.util.mesh_factory import MeshFactory
 from zengine.assets.mesh_asset import MeshAsset
 from zengine.core.engine import Engine
 from zengine.core.scene import Scene
@@ -21,9 +19,18 @@ from zengine.ecs.systems.camera_system import CameraSystem
 from zengine.ecs.systems.player_controller_system import PlayerControllerSystem
 from zengine.ecs.systems.debug_render_system import DebugRenderSystem
 from zengine.ecs.systems.render_system import RenderSystem
+from zengine.graphics.shader import Shader # Import Shader
+
+from pathlib import Path # Import Path for shader loading
 
 
 class MyGame(Engine):
+    def __init__(self, size, title):
+        # CRITICAL FIX: Call super().__init__ to ensure Engine's __init__ runs
+        # This is where self.default_shader and self.debug_shader are initialized.
+        super().__init__(size, title)
+
+
     def setup(self):
         # Vertices (x, y, z) - 4 vertices per face, 6 faces = 24 vertices
         vertices = numpy.array([
@@ -94,7 +101,7 @@ class MyGame(Engine):
             [0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, 0.0],
             # Bottom face
             [1.0, 0.0], [0.0, 0.0], [0.0, 1.0], [1.0, 1.0],
-        ], dtype=numpy.uint32) # Changed to uint32 for consistency, though float32 is common for UVs.
+        ], dtype=numpy.float32)
 
         # Indices (12 triangles, 36 indices in total)
         indices = numpy.array([
@@ -113,7 +120,6 @@ class MyGame(Engine):
         ], dtype=numpy.uint32)
 
         scene = Scene()
-        mesh_texture = load_texture_2d(self.window.ctx, "./assets/images/199.JPG")
 
         # Create the MeshAsset instance
         mesh = MeshAsset("box", vertices, normals, indices, uvs)
@@ -122,28 +128,40 @@ class MyGame(Engine):
         boxid = scene.entity_manager.create_entity()
         scene.entity_manager.add_component(boxid, Transform(x=0.0, y=0.0, z=0.0))
         scene.entity_manager.add_component(boxid, MeshFilter(mesh))
-        scene.entity_manager.add_component(boxid, Material(albedo=(1.0, 0.0, 1.0, 1.0), use_lighting=True, use_texture=True, shader=self.default_shader))
-        scene.entity_manager.add_component(boxid, MeshRenderer(shader=self.default_shader))
+
+        # Ensure default_shader is not None before assigning
+        if self.default_shader:
+            scene.entity_manager.add_component(boxid, Material(albedo=(1.0, 1, 1, 1.0), shader=self.default_shader, use_texture=False, use_lighting=True))
+            scene.entity_manager.add_component(boxid, MeshRenderer(shader=self.default_shader))
+        else:
+            print("WARNING: default_shader not loaded, cube might not render.")
+
 
         # — core systems —
         scene.add_system(InputSystem())
         scene.add_system(CameraSystem())
         scene.add_system(PlayerControllerSystem(scene.systems[0]))
-        scene.add_system(RenderSystem(self.window.ctx, scene))
+        render_sys = RenderSystem(self.window.ctx, scene)
+        scene.add_system(render_sys)
 
         # — debug grid + axes so you can see your origin —
-        debug_sys = DebugRenderSystem(self.window.ctx, scene)
-        scene.add_system(debug_sys)
-        debug_sys.set_enabled("grid", True)
-        debug_sys.set_enabled("axes", True)
-        debug_sys.set_enabled("bounding_boxes", True)
+        # DebugRenderSystem now relies on Engine.debug_shader
+        if self.debug_shader:
+            debug_sys = DebugRenderSystem(self.window.ctx, scene)
+            scene.add_system(debug_sys)
+            debug_sys.set_enabled("grid", True)
+            debug_sys.set_enabled("axes", True)
+            debug_sys.set_enabled("bounding_boxes", True)
+        else:
+            print("WARNING: debug_shader not loaded, debug gizmos will not render.")
 
 
-        # — camera at (0,0,5), looking down −Z (identity rotation) —
+        # — camera at (0,0,-5), looking down +Z (identity rotation) —
+        # For a top-down view where Z is depth (into screen), camera needs to be at a negative Z
+        # and looking towards positive Z.
         cam = scene.entity_manager.create_entity()
         scene.active_camera = cam
-        scene.entity_manager.add_component(cam, Transform(x=0.0, y=0.0, z=1.0))
-        
+        scene.entity_manager.add_component(cam, Transform(x=0.0, y=0.0, z=2.0)) # Camera is 5 units back
         scene.entity_manager.add_component(cam, CameraComponent(
             aspect=self.window.width / self.window.height,
             near=0.01, far=1000.0,
@@ -155,13 +173,15 @@ class MyGame(Engine):
 
         # — simple white point‑light out in front —
         light = scene.entity_manager.create_entity()
-        scene.entity_manager.add_component(light, Transform(x=0.0, y=4.0, z=0.0))
+        scene.entity_manager.add_component(light, Transform(x=0.0, y=1.0, z=0.0)) # Light is above the cube
         scene.entity_manager.add_component(light, LightComponent(
             type=LightType.POINT,
             color=(1.0, 1.0, 1.0),
             intensity=5.0,
-            range=20.0,
+            range=200.0,
         ))
+
+        scene.entity_manager.add_component(light, PlayerController(1, rotation_speed=1))
 
         self.add_scene("main", scene, make_current=True)
 
