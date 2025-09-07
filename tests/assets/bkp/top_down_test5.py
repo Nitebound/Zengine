@@ -19,22 +19,20 @@ from zengine.ecs.systems.input_system import InputSystem
 from zengine.ecs.systems.camera_system import CameraSystem
 from zengine.ecs.systems.debug_render_system import DebugRenderSystem
 from zengine.ecs.systems.render_system import RenderSystem
+from zengine.assets.loaders.gltf_loader import load_gltf_model
 
 from zengine.graphics.texture_loader import load_texture_2d
 from zengine.ecs.systems.free_roam_camera_controller_system import FreeRoamCameraControllerSystem
 
-
-class MyGame(Engine):
+class TopDownTest(Engine):
     def __init__(self, size, title):
-        # CRITICAL FIX: Call super().__init__ to ensure Engine's __init__ runs
         # This is where self.default_shader and self.debug_shader are initialized.
         super().__init__(size, title)
-
 
     def setup(self):
         # Vertices (x, y, z) - 4 vertices per face, 6 faces = 24 vertices
 
-        cube_size = .3
+        cube_size = .1
         vertices = numpy.array([
             # Front face (+Z)
             [-cube_size, -cube_size, cube_size],  # 0: Bottom-left-front
@@ -122,29 +120,29 @@ class MyGame(Engine):
         ], dtype=numpy.uint32)
 
         scene = Scene()
-        mesh_texture = load_texture_2d(self.window.ctx, "./assets/images/159.JPG")
-        mesh_normal = load_texture_2d(self.window.ctx, "./assets/images/159_norm.JPG")
+        # mesh_texture = load_texture_2d(self.window.ctx, "./assets/images/166.JPG")
+        # mesh_normal = load_texture_2d(self.window.ctx, "./assets/images/166_norm.JPG")
         input_sys = scene.get_system(InputSystem)
 
         # Create the MeshAsset instance
-        mesh = MeshAsset("box", vertices, normals, indices, uvs)
+        mesh = MeshAsset("plane", vertices, normals, indices, uvs)
+        models = load_gltf_model(self.window.ctx, "assets/models/RiggedFigure.gltf", self.default_shader)
 
-        width = 6
-        for x in range(int(-width/2), int(width/2)):
-            for y in range(int(-width/2), int(width/2)):
-                # --- Create and configure the cube entity ---
-                tile = scene.entity_manager.create_entity()
-                scene.entity_manager.add_component(tile, Transform(x=x*.600, y=y*.600, z=0))
-                scene.entity_manager.add_component(tile, MeshFilter(mesh))
-                scene.entity_manager.add_component(tile, Material(albedo_texture=mesh_texture, normal_map=mesh_normal, use_texture=True, shader=self.default_shader))
-                scene.entity_manager.add_component(tile, MeshRenderer(shader=self.default_shader))
-
+        for mesh, mat, skin in models:
+            eid = scene.entity_manager.create_entity()
+            scene.entity_manager.add_component(eid, Transform(x=0.0, y=0.0, z=0.0))
+            scene.entity_manager.add_component(eid, MeshFilter(mesh))
+            scene.entity_manager.add_component(eid, mat)
+            scene.entity_manager.add_component(eid, MeshRenderer(shader=self.default_shader))
+            scene.entity_manager.add_component(eid, PlayerController(1, rotation_speed=1))
+            
         # — core systems —
         scene.add_system(InputSystem())
         scene.add_system(CameraSystem())
         scene.add_system(FreeRoamCameraControllerSystem(input_sys))
         render_sys = RenderSystem(self.window.ctx, scene)
         scene.add_system(render_sys)
+
 
 
         # DebugRenderSystem now relies on Engine.debug_shader
@@ -158,23 +156,24 @@ class MyGame(Engine):
         # Main Camera
         cam = scene.entity_manager.create_entity()
         scene.active_camera = cam
-        scene.entity_manager.add_component(cam, Transform(x=0.0, y=0.0, z=1.0))
+        scene.entity_manager.add_component(cam, Transform(x=0.0, y=0.0, z=4.0))
         scene.entity_manager.add_component(cam, CameraComponent(
             aspect=self.window.width / self.window.height,
             near=0.01, far=1000.0,
             fov_deg=60.0,
             projection=ProjectionType.PERSPECTIVE
         ))
+
         scene.entity_manager.add_component(cam, FreeRoamCameraController(11, 1))
 
         # Create a point light in the scene
         light = scene.entity_manager.create_entity()
-        scene.entity_manager.add_component(light, Transform(x=0.0, y=0.0, z=2.0))
+        scene.entity_manager.add_component(light, Transform(x=0.0, y=0.0, z=10.0))
         scene.entity_manager.add_component(light, LightComponent(
             type=LightType.POINT,
             color=(1.0, 1.0, 1.0),
-            intensity=5.0,
-            range=12.0,
+            intensity=20.0,
+            range=400.0,
         ))
 
         #scene.entity_manager.add_component(light, PlayerController(11, rotation_speed=1))
@@ -183,6 +182,6 @@ class MyGame(Engine):
 
 
 if __name__ == "__main__":
-    app = MyGame(size=(1024, 768), title="ZEngine Model Preview")
+    app = TopDownTest(size=(1024, 768), title="ZEngine Model Preview")
     app.setup()
     app.run()

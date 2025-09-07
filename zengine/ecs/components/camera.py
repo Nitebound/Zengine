@@ -6,7 +6,7 @@ import numpy as np
 
 
 class ProjectionType(Enum):
-    ORTHO       = 1
+    ORTHOGRAPHIC       = 1
     PERSPECTIVE = 2
 
 

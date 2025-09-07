@@ -16,9 +16,9 @@ from scipy.spatial.transform import Rotation as R
 
 def compute_model_matrix(tr: Transform) -> np.ndarray:
     T = np.eye(4, dtype='f4'); T[:3, 3] = (tr.x, tr.y, tr.z)
-    R = quat_to_mat4(tr.rotation_x, tr.rotation_y, tr.rotation_z, tr.rotation_w)
+    Rm = quat_to_mat4(tr.rotation_x, tr.rotation_y, tr.rotation_z, tr.rotation_w)
     S = np.diag([tr.scale_x, tr.scale_y, tr.scale_z, 1.0]).astype('f4')
-    return T @ R @ S
+    return T @ Rm @ S
 
 
 class RenderSystem(System):
@@ -28,11 +28,68 @@ class RenderSystem(System):
         self.scene = scene
         self._vao_cache = {}
 
+        # Depth/cull as you had
         self.ctx.enable(moderngl.DEPTH_TEST)
-        self.ctx.disable(moderngl.CULL_FACE)
+        # self.ctx.disable(moderngl.CULL_FACE)
         self.ctx.front_face = 'ccw'
 
-    def on_update(self, dt): pass
+        self.ctx.enable(moderngl.BLEND)
+        self.ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
+        self.ctx.blend_equation = moderngl.FUNC_ADD
+
+    def on_update(self, dt):
+        pass
+
+    def _collect_lights(self):
+        """Collect lights once per frame, return padded arrays ready for upload and used count."""
+        MAX_LIGHTS = 16
+        positions = []
+        colors = []
+        intensities = []
+        ranges = []
+
+        # Use entity_manager consistently
+        for eid in self.scene.entity_manager.get_entities_with(Transform, LightComponent):
+            lc = self.scene.entity_manager.get_component(eid, LightComponent)
+            tr = self.scene.entity_manager.get_component(eid, Transform)
+            if lc is None or tr is None:
+                continue
+
+            if lc.type == LightType.DIRECTIONAL:
+                # derive forward from quaternion (x, y, z, w)
+                fwd = R.from_quat([tr.rotation_x, tr.rotation_y, tr.rotation_z, tr.rotation_w]).apply([0.0, 0.0, -1.0])
+                far = 1e6
+                pos = (-np.asarray(fwd, dtype='f4') * far)
+                positions.append((float(pos[0]), float(pos[1]), float(pos[2])))
+                ranges.append(float(far))
+            else:
+                positions.append((float(tr.x), float(tr.y), float(tr.z)))
+                ranges.append(float(lc.range))
+
+            colors.append((float(lc.color[0]), float(lc.color[1]), float(lc.color[2])))
+            intensities.append(float(lc.intensity))
+
+        used = min(len(positions), MAX_LIGHTS)
+
+        # pad/clip
+        if used < MAX_LIGHTS:
+            pad = MAX_LIGHTS - used
+            positions += [(0.0, 0.0, 0.0)] * pad
+            colors    += [(0.0, 0.0, 0.0)] * pad
+            intensities += [0.0] * pad
+            ranges      += [0.0] * pad
+
+        positions = positions[:MAX_LIGHTS]
+        colors    = colors[:MAX_LIGHTS]
+        intensities = intensities[:MAX_LIGHTS]
+        ranges      = ranges[:MAX_LIGHTS]
+
+        # pack to contiguous arrays
+        pos_arr = np.asarray(positions, dtype='f4').reshape(MAX_LIGHTS, 3)
+        col_arr = np.asarray(colors, dtype='f4').reshape(MAX_LIGHTS, 3)
+        int_arr = np.asarray(intensities, dtype='f4').reshape(MAX_LIGHTS)
+        rng_arr = np.asarray(ranges, dtype='f4').reshape(MAX_LIGHTS)
+        return used, pos_arr, col_arr, int_arr, rng_arr
 
     def on_render(self, renderer):
         cam_e = self.scene.active_camera
@@ -41,128 +98,112 @@ class RenderSystem(System):
 
         proj = cp_cam.projection_matrix
         view = cp_cam.view_matrix
-        camera_position = (tr_cam.x, tr_cam.y, tr_cam.z) # Get camera's world position
+        camera_position = (tr_cam.x, tr_cam.y, tr_cam.z)
 
-        # Collect lights
-        light_data = []
-        for eid in self.scene.entity_manager.get_entities_with(Transform, LightComponent):
-            light = self.scene.entity_manager.get_component(eid, LightComponent)
-            tr = self.scene.entity_manager.get_component(eid, Transform)
-            light_data.append((light, tr))
+        # Collect lights once
+        used_lights, lp_arr, lc_arr, li_arr, lr_arr = self._collect_lights()
 
         for eid in self.scene.entity_manager.get_entities_with(Transform, MeshFilter, Material, MeshRenderer):
             tr = self.scene.entity_manager.get_component(eid, Transform)
             mf = self.scene.entity_manager.get_component(eid, MeshFilter)
             mat = self.scene.entity_manager.get_component(eid, Material)
+
             model = compute_model_matrix(tr)
             prog = mat.shader.program
 
+            # matrices
             if 'model' in prog:      prog['model'].write(model.T.astype('f4').tobytes())
             if 'view' in prog:       prog['view'].write(view.T.astype('f4').tobytes())
             if 'projection' in prog: prog['projection'].write(proj.T.astype('f4').tobytes())
-            # Pass camera position to the shader for specular calculations
-            if 'camera_position' in prog: prog['camera_position'].write(np.array(camera_position, dtype='f4').tobytes())
-            # Pass ambient color to the shader
-            if 'u_ambient_color' in prog: prog['u_ambient_color'].value = (0.0, 0.0, 0.0) # Or make this configurable
 
+            # camera + ambient
+            if 'camera_position' in prog:
+                prog['camera_position'].write(np.asarray(camera_position, dtype='f4').tobytes())
+            if 'u_ambient_color' in prog:
+                prog['u_ambient_color'].value = (0.0, 0.0, 0.0)
 
+            # lights
             if 'light_count' in prog:
-                prog['light_count'].value = len(light_data)
-                MAX_LIGHTS = 8
-                light_positions = []
-                light_colors = []
-                light_intensities = []
-                light_ranges = []
+                prog['light_count'].value = used_lights
+                if 'light_position' in prog:  prog['light_position'].write(lp_arr.tobytes())
+                if 'light_color' in prog:     prog['light_color'].write(lc_arr.tobytes())
+                if 'light_intensity' in prog: prog['light_intensity'].write(li_arr.tobytes())
+                if 'light_range' in prog:     prog['light_range'].write(lr_arr.tobytes())
 
-                for light, l_tr in light_data[:MAX_LIGHTS]:
-                    light_model = compute_model_matrix(l_tr)
-                    world_pos = light_model[:3, 3]
-                    light_positions.extend(world_pos)
-                    light_colors.extend(light.color[:3])
-                    light_intensities.append(light.intensity)
-                    light_ranges.append(light.range)
-
-                # Pad light arrays to MAX_LIGHTS to avoid shader errors if less lights are present
-                while len(light_positions) < MAX_LIGHTS * 3:
-                    light_positions.extend((0.0, 0.0, 0.0))
-                while len(light_colors) < MAX_LIGHTS * 3:
-                    light_colors.extend((0.0, 0.0, 0.0))
-                while len(light_intensities) < MAX_LIGHTS:
-                    light_intensities.append(0.0)
-                while len(light_ranges) < MAX_LIGHTS:
-                    light_ranges.append(0.001) # Use a small non-zero range to avoid division by zero in shader
-
-                prog['light_position'].write(np.array(light_positions, dtype='f4').tobytes())
-                prog['light_color'].write(np.array(light_colors, dtype='f4').tobytes())
-                prog['light_intensity'].write(np.array(light_intensities, dtype='f4').tobytes())
-                prog['light_range'].write(np.array(light_ranges, dtype='f4').tobytes())
-
+            # material uniforms
             for uname, val in mat.get_all_uniforms().items():
                 if uname in prog:
                     try:
-                        # Ensure tuples are converted to numpy arrays for writing to uniforms if needed
-                        if isinstance(val, tuple):
-                            prog[uname].value = np.array(val, dtype='f4')
+                        if isinstance(val, np.ndarray):
+                            prog[uname].value = tuple(val.tolist())
+                        elif isinstance(val, (tuple, list)):
+                            prog[uname].value = tuple(val)
                         else:
                             prog[uname].value = val
                     except (KeyError, struct.error, TypeError, AttributeError) as e:
                         print(f"⚠️ Skipping uniform '{uname}': {e}")
 
+            # textures
             for slot, (uname, tex) in enumerate(mat.get_all_textures().items()):
                 tex.use(location=slot)
                 if uname in prog:
                     prog[uname].value = slot
 
+            # build/reuse VAO
             key = (mf.asset.name, prog.glo)
             if key not in self._vao_cache:
                 v = mf.asset.vertices
                 n = mf.asset.normals
                 uv = mf.asset.uvs
-                j = mf.asset.joints
-                w = mf.asset.weights
-                t = mf.asset.tangents if hasattr(mf.asset, 'tangents') else None
+                j = getattr(mf.asset, 'joints', None)
+                w = getattr(mf.asset, 'weights', None)
+                t = getattr(mf.asset, 'tangents', None)
 
                 fmt = '3f'
                 attrs = ['in_position']
                 streams = [v]
 
-                # Dynamically add attributes based on what the shader program expects
-                if 'in_normal' in prog._members and n is not None:
+                # Only attach attributes the shader declares
+                members = getattr(prog, '_members', {})
+
+                if 'in_normal' in members and n is not None:
                     fmt += ' 3f'
                     attrs.append('in_normal')
                     streams.append(n)
 
-                if 'in_uv' in prog._members and uv is not None:
+                if 'in_uv' in members and uv is not None:
                     if uv.ndim == 1:
                         uv = uv.reshape(-1, 2)
                     fmt += ' 2f'
                     attrs.append('in_uv')
                     streams.append(uv)
 
-                if 'in_tangent' in prog._members:
+                if 'in_tangent' in members:
                     if t is None:
-                        t = np.zeros((v.shape[0], 3), dtype='f4')  # fallback
+                        t = np.zeros((v.shape[0], 3), dtype='f4')
                     fmt += ' 3f'
                     attrs.append('in_tangent')
                     streams.append(t)
 
-                if 'in_joints' in prog._members:
-                    j = np.zeros((v.shape[0], 4), dtype='f4')
+                if 'in_joints' in members:
+                    if j is None:
+                        j = np.zeros((v.shape[0], 4), dtype='f4')
                     fmt += ' 4f'
                     attrs.append('in_joints')
-                    streams.append(j)
+                    streams.append(j.astype('f4'))
 
-                if 'in_weights' in prog._members:
-                    w = np.zeros((v.shape[0], 4), dtype='f4')
+                if 'in_weights' in members:
+                    if w is None:
+                        w = np.zeros((v.shape[0], 4), dtype='f4')
                     fmt += ' 4f'
                     attrs.append('in_weights')
-                    streams.append(w)
+                    streams.append(w.astype('f4'))
 
                 # Concatenate all vertex data streams horizontally
-                if len(streams) > 0:
+                if streams:
                     vertices_combined = np.hstack(streams).astype('f4')
                 else:
-                    vertices_combined = v.astype('f4') # Only position if no other streams
+                    vertices_combined = v.astype('f4')  # Only position if no other streams
 
                 vbo = self.ctx.buffer(vertices_combined.tobytes())
                 ibo = self.ctx.buffer(mf.asset.indices.astype('i4').tobytes())
@@ -170,41 +211,24 @@ class RenderSystem(System):
                 vao = self.ctx.vertex_array(prog, content, ibo)
                 self._vao_cache[key] = vao
             else:
-                vao = self._vao_cache[key] # Retrieve from cache
+                vao = self._vao_cache[key]
 
-            # 🔗 Skinning: Compute joint_matrices[] with optional pose override
-            if hasattr(mf.asset, 'skin_asset') and mf.asset.skin_asset is not None:
-                pose_overrides = {}
-
-                joint_idx = 2  # Example joint index from your original code
-                if joint_idx < len(mf.asset.gltf_data.nodes):
-                    node = mf.asset.gltf_data.nodes[joint_idx]
-
-                    T = np.eye(4, dtype=np.float32)
-                    R_ = np.eye(4, dtype=np.float32)
-                    S = np.eye(4, dtype=np.float32)
-
-                    if node.translation:
-                        T[:3, 3] = node.translation
-
-                    angle = np.sin(time.time() * 45.0) * 1.1
-                    rot = R.from_euler('x', -angle, degrees=True)
-                    R_[:3, :3] = rot.as_matrix()
-
-                    pose_overrides[joint_idx] = T @ R_ @ S
-
-                joint_matrices = compute_joint_matrices(
-                    mf.asset.gltf_data,
-                    mf.asset.skin_asset,
-                    pose_overrides=pose_overrides
-                )
-
+            # Skinning uniform (mat4[64])
+            if 'joint_matrices' in prog:
                 MAX_JOINTS = 64
-                joint_matrices_padded = np.tile(np.eye(4, dtype='f4'), (MAX_JOINTS, 1)).reshape((MAX_JOINTS, 4, 4))
-                joint_matrices_padded[:len(joint_matrices)] = joint_matrices
+                if hasattr(mf.asset, 'skin_asset') and mf.asset.skin_asset is not None:
+                    joint_matrices = compute_joint_matrices(
+                        mf.asset.gltf_data,
+                        mf.asset.skin_asset,
+                        pose_overrides={}
+                    )
+                    jm = np.tile(np.eye(4, dtype='f4'), (MAX_JOINTS, 1)).reshape((MAX_JOINTS, 4, 4))
+                    jm[:len(joint_matrices)] = joint_matrices
+                    prog['joint_matrices'].write(jm.astype('f4').tobytes())
+                else:
+                    identity_joints = np.tile(np.eye(4, dtype='f4'), (MAX_JOINTS, 1)).reshape((MAX_JOINTS, 4, 4))
+                    prog['joint_matrices'].write(identity_joints.astype('f4').tobytes())
 
-                if 'joint_matrices' in prog and not hasattr(mf.asset, 'skin_asset'):
-                    identity_joints = np.tile(np.eye(4, dtype='f4'), (64, 1)).flatten()
-                    prog['joint_matrices'].write(identity_joints.tobytes())
-
+            # Render
+            self.ctx.depth_mask = True
             vao.render()

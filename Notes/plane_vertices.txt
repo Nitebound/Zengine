@@ -1,0 +1,29 @@
+        # Create the MeshAsset instance
+        # mesh = MeshAsset("plane", vertices, normals, indices, uvs)
+
+        cube_size = .1
+        vertices = numpy.array([
+            # Front face (+Z)
+            [-cube_size, -cube_size, cube_size],  # 0: Bottom-left-front
+            [cube_size, -cube_size, cube_size],  # 1: Bottom-right-front
+            [cube_size, cube_size, cube_size],  # 2: Top-right-front
+            [-cube_size, cube_size, cube_size],  # 3: Top-left-front
+        ], dtype=numpy.float32)
+
+        # Normals (one normal per face, applied to all 4 vertices of that face)
+        normals = numpy.array([
+            # Front face (+Z)
+            [0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 0.0, 1.0],
+        ], dtype=numpy.float32)
+
+        # UVs (standard (0,0), (1,0), (1,1), (0,1) for each face)
+        uvs = numpy.array([
+            # Front face
+            [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0],
+        ], dtype=numpy.float32)
+
+        # Indices (12 triangles, 36 indices in total)
+        indices = numpy.array([
+            # Front face (vertices 0, 1, 2, 3)
+            0, 1, 2, 0, 2, 3,
+        ], dtype=numpy.uint32)

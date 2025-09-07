@@ -142,7 +142,7 @@ class MyGame(Engine):
         # — camera at (0,0,5), looking down −Z (identity rotation) —
         cam = scene.entity_manager.create_entity()
         scene.active_camera = cam
-        scene.entity_manager.add_component(cam, Transform(x=0.0, y=0.0, z=1.0))
+        scene.entity_manager.add_component(cam, Transform(x=0.0, y=0.0, z=3.0))
         
         scene.entity_manager.add_component(cam, CameraComponent(
             aspect=self.window.width / self.window.height,

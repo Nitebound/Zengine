@@ -22,7 +22,15 @@ class CameraSystem(System):
                     [0, 0, -1, 0],
                 ], dtype='f4')
             else:
-                # Orthographic (unchanged)
+                if cam.left == cam.right == 0:
+                    half_width = 5.0 * cam.aspect
+                    cam.left = -half_width
+                    cam.right = half_width
+                if cam.bottom == cam.top == 0:
+                    half_height = 5.0
+                    cam.bottom = -half_height
+                    cam.top = half_height
+
                 proj = np.array([
                     [2/(cam.right-cam.left), 0, 0, -(cam.right+cam.left)/(cam.right-cam.left)],
                     [0, 2/(cam.top-cam.bottom), 0, -(cam.top+cam.bottom)/(cam.top-cam.bottom)],

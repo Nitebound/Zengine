@@ -17,74 +17,53 @@ class PlayerControllerSystem(System):
         self.mouse_sensitivity = 0.2
         self.last_mouse_pos = None
         self.mouse_dragging = False
+        self.rotation_speed = 1000  # Degrees per second
 
     def on_added(self, scene):
         super().on_added(scene)
         self.input = scene.get_system(InputSystem)
 
     def on_event(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 3:
-                self.mouse_dragging = True
-                pygame.event.set_grab(True)
-                pygame.mouse.set_visible(False)
-                self.last_mouse_pos = pygame.mouse.get_pos()
-
-            elif event.type == pygame.MOUSEBUTTONUP and event.button == 3:
-                self.mouse_dragging = False
-                pygame.event.set_grab(False)
-                pygame.mouse.set_visible(True)
-                self.last_mouse_pos = None
-        elif event.type == pygame.MOUSEBUTTONUP and event.button == 3:
-            self.mouse_dragging = False
-            pygame.event.set_grab(False)
-            pygame.mouse.set_visible(True)
-            self.last_mouse_pos = None
+        pass
 
     def on_update(self, dt):
         for eid in self.em.get_entities_with(PlayerController, Transform):
             pc = self.em.get_component(eid, PlayerController)
             tr = self.em.get_component(eid, Transform)
 
-            # Mouse look: Z = yaw, X = pitch
-            if self.mouse_dragging:
-                mouse_pos = pygame.mouse.get_pos()
-                if self.last_mouse_pos is not None:
-                    dx = mouse_pos[0] - self.last_mouse_pos[0]
-                    dy = mouse_pos[1] - self.last_mouse_pos[1]
+            # # Handle entity rotation when space bar is pressed
+            # if self.input.is_key_down(pygame.K_SPACE):
+            #     # Calculate rotation amount for this frame
+            #     rotation_delta = self.rotation_speed * dt  # Rotate by `rotation_speed` degrees per second
+            #
+            #     # Apply the rotation to the Z-axis (Euler approach)
+            #     tr.euler_x += rotation_delta
+            #
+            #     # Update quaternion to reflect the new euler angles
+            #     tr.update_quaternion_from_euler()
 
-                    tr.euler_z -= dx * self.mouse_sensitivity  # Yaw (around Z)
-                    tr.euler_x -= dy * self.mouse_sensitivity  # Pitch (around X)
-                    tr.euler_x = max(-89.9, min(89.9, tr.euler_x))  # Clamp
-
-                pygame.mouse.set_pos(self.last_mouse_pos)
-                pygame.event.pump()
-
-            tr.update_quaternion_from_euler()
-
-            # Movement based on orientation
+            # Movement logic (independent of rotation)
             forward = quat_to_forward(tr.rotation_x, tr.rotation_y, tr.rotation_z, tr.rotation_w)
-            right   = quat_to_right(tr.rotation_x, tr.rotation_y, tr.rotation_z, tr.rotation_w)
-            up      = quat_to_up(tr.rotation_x, tr.rotation_y, tr.rotation_z, tr.rotation_w)
+            right = quat_to_right(tr.rotation_x, tr.rotation_y, tr.rotation_z, tr.rotation_w)
+            up = quat_to_up(tr.rotation_x, tr.rotation_y, tr.rotation_z, tr.rotation_w)
 
             velocity = np.zeros(3, dtype='f4')
 
-            # Forward/back (along Y)
+            # Handle movement: Arrow keys for translation
             if self.input.is_key_down(pygame.K_w): velocity += up
             if self.input.is_key_down(pygame.K_s): velocity -= up
-
-            # Left/right (along X)
             if self.input.is_key_down(pygame.K_a): velocity -= right
             if self.input.is_key_down(pygame.K_d): velocity += right
 
-            # Depth up/down (along Z)
-            if self.input.is_key_down(pygame.K_SPACE): velocity -= forward  # toward origin
-            if self.input.is_key_down(pygame.K_z):     velocity += forward  # away from origin
-
-            # Apply movement
+            # Normalize and apply velocity
             if np.linalg.norm(velocity) > 0:
                 velocity = velocity / np.linalg.norm(velocity)
                 velocity *= pc.speed * dt
                 tr.x += velocity[0]
                 tr.y += velocity[1]
                 tr.z += velocity[2]
+
+                # Ensure no unintended drifting
+                tr.x = round(tr.x, 6)
+                tr.y = round(tr.y, 6)
+                tr.z = round(tr.z, 6)

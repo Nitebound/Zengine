@@ -62,7 +62,6 @@ class DebugRenderSystem(System):
         }
 
         # --- Debug Shaders Initialization ---
-        # Using your specified shader path: Path(__file__).parent.parent / "assets" / "shaders"
         shader_dir = Path(__file__).parent.parent.parent / "assets" / "shaders"
 
         # Load the shader programs using your existing debug_vert.glsl and debug_frag.glsl.
@@ -88,7 +87,6 @@ class DebugRenderSystem(System):
         # Disable face culling as we are drawing lines, not solid surfaces.
         self.ctx.enable(moderngl.DEPTH_TEST)
         self.ctx.disable(moderngl.CULL_FACE)
-        # Optionally set line width for better visibility of debug lines
         self.ctx.line_width = 2.0 # You can adjust this value
 
     def _init_grid_vao(self):
@@ -96,13 +94,14 @@ class DebugRenderSystem(System):
         Initializes the VAO for drawing a large floor grid on the XY plane (Z=0).
         The grid is composed of lines parallel to the X and Y axes.
         """
-        size = 16.0 # Grid extends from -size to +size on X and Y
-        step = 1.0  # Spacing between grid lines
+        size = 50.0 # Grid extends from -size to +size on X and Y
+        step = .25  # Spacing between grid lines
         lines = []
         # Generate lines parallel to the Y-axis (fixed X, varying Y, Z=0)
         for i in range(int(-size / step), int(size / step) + 1):
             lines.append((i * step, -size, 0.0)) # Start point (X, Y, Z=0)
             lines.append((i * step, size, 0.0))  # End point (X, Y, Z=0)
+
         # Generate lines parallel to the X-axis (varying X, fixed Y, Z=0)
         for i in range(int(-size / step), int(size / step) + 1):
             lines.append((-size, i * step, 0.0)) # Start point (X, Y, Z=0)
@@ -208,7 +207,7 @@ class DebugRenderSystem(System):
 
             # Render a bounding box for the entity's transform if enabled.
             if self.enabled["bounding_boxes"] and self._bbox_vao is not None:
-                self.draw_bounding_box(eid, tr, proj, view)
+                self.draw_bounding_box(eid, tr, proj, view, [])
 
     def draw_grid(self, proj: np.ndarray, view: np.ndarray):
 
@@ -245,8 +244,12 @@ class DebugRenderSystem(System):
         if 'color' in prog: prog['color'].value = (0.0, 0.0, 1.0) # Blue
         self._axes_vao.render(moderngl.LINES, vertices=2, first=4) # Next 2 vertices are Z-axis
 
-    def draw_bounding_box(self, eid, tr: Transform, proj: np.ndarray, view: np.ndarray):
+    def draw_bounding_box(self, eid, tr: Transform, proj: np.ndarray, view: np.ndarray, ignore: bool):
         from zengine.ecs.components import MeshFilter
+
+        if eid in ignore:
+            print("Ignoring bounding box for {}".format(eid))
+            return
 
         # Try to get the actual mesh bounds
         mf = self.scene.entity_manager.get_component(eid, MeshFilter)
@@ -265,6 +268,9 @@ class DebugRenderSystem(System):
             else:
                 model = compute_model_matrix(tr)
         else:
+            tr.scale_x=.5
+            tr.scale_y=.5
+            tr.scale_z=.5
             model = compute_model_matrix(tr)
 
         prog = self.bbox_shader.program
