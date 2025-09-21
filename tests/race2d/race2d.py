@@ -49,6 +49,7 @@ class TopDownTest(Engine):
         scene.add_system(CameraSystem())
         scene.add_system(FreeRoamCameraControllerSystem(input_sys))
         scene.add_system(TopDownCarControllerSystem(input_sys))
+
         scene.add_system(PhysicsSystem2D(self.window.ctx, scene))
 
         render_sys = RenderSystem(self.window.ctx, scene)
