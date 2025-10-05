@@ -45,11 +45,10 @@ class TopDownTest(Engine):
         mat = Material(shader=self.default_shader, albedo_texture=mesh_texture)
 
         # — core systems —
-        cam_sys = CameraSystem()
         scene.add_system(InputSystem())
-        scene.add_system(cam_sys)
-        # scene.add_system(FreeRoamCameraControllerSystem(input_sys))
-        scene.add_system(TopDownCarControllerSystem(input_sys, cam_sys))
+        scene.add_system(CameraSystem())
+        scene.add_system(FreeRoamCameraControllerSystem(input_sys))
+        scene.add_system(TopDownCarControllerSystem(input_sys))
 
         scene.add_system(PhysicsSystem2D(self.window.ctx, scene))
 
@@ -58,17 +57,17 @@ class TopDownTest(Engine):
 
         scene.add_system(render_sys)
         scene.add_system(debug_sys)
-        cam = scene.entity_manager.create_entity()
 
         eid = scene.entity_manager.create_entity()
         scene.entity_manager.add_component(eid, Transform(x=0,y=0, z=1))
         scene.entity_manager.add_component(eid, MeshFilter(mesh))
         scene.entity_manager.add_component(eid, mat)
         scene.entity_manager.add_component(eid, MeshRenderer(shader=self.default_shader, texture=mesh_texture))
-        scene.entity_manager.add_component(eid, TopDownCarController(11, 11, cam_sys))
+        scene.entity_manager.add_component(eid, TopDownCarController(11, 11))
         scene.entity_manager.add_component(eid, RigidBody2D(1, [0,0,0], [0,0,0]))
 
         # Main Camera
+        cam = scene.entity_manager.create_entity()
         scene.active_camera = cam
         scene.entity_manager.add_component(cam, Transform(x=0.0, y=0.0, z=4.0))
         scene.entity_manager.add_component(cam, CameraComponent(
@@ -78,7 +77,7 @@ class TopDownTest(Engine):
             projection=ProjectionType.PERSPECTIVE
         ))
 
-        # scene.entity_manager.add_component(cam, FreeRoamCameraController(11, 1))
+        scene.entity_manager.add_component(cam, FreeRoamCameraController(11, 1))
 
         # Create a point light in the scene
         light = scene.entity_manager.create_entity()

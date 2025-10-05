@@ -122,7 +122,7 @@ class MyGame(Engine):
         boxid = scene.entity_manager.create_entity()
         scene.entity_manager.add_component(boxid, Transform(x=0.0, y=0.0, z=0.0))
         scene.entity_manager.add_component(boxid, MeshFilter(mesh))
-        scene.entity_manager.add_component(boxid, Material(albedo=(1.0, 0.0, 1.0, 1.0), use_lighting=True, use_texture=True, shader=self.default_shader))
+        scene.entity_manager.add_component(boxid, Material(albedo=(1.0, 1.0, 1.0, 1.0), use_lighting=True, use_texture=True, shader=self.default_shader))
         scene.entity_manager.add_component(boxid, MeshRenderer(shader=self.default_shader))
 
         # — core systems —

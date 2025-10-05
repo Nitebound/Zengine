@@ -31,22 +31,10 @@ class PlayerControllerSystem(System):
             pc = self.em.get_component(eid, PlayerController)
             tr = self.em.get_component(eid, Transform)
 
-            # # Handle entity rotation when space bar is pressed
-            # if self.input.is_key_down(pygame.K_SPACE):
-            #     # Calculate rotation amount for this frame
-            #     rotation_delta = self.rotation_speed * dt  # Rotate by `rotation_speed` degrees per second
-            #
-            #     # Apply the rotation to the Z-axis (Euler approach)
-            #     tr.euler_x += rotation_delta
-            #
-            #     # Update quaternion to reflect the new euler angles
-            #     tr.update_quaternion_from_euler()
-
             # Movement logic (independent of rotation)
             forward = quat_to_forward(tr.rotation_x, tr.rotation_y, tr.rotation_z, tr.rotation_w)
             right = quat_to_right(tr.rotation_x, tr.rotation_y, tr.rotation_z, tr.rotation_w)
             up = quat_to_up(tr.rotation_x, tr.rotation_y, tr.rotation_z, tr.rotation_w)
-
             velocity = np.zeros(3, dtype='f4')
 
             # Handle movement: Arrow keys for translation

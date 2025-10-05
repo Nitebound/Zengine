@@ -12,6 +12,7 @@ from Box2D import (
     b2RevoluteJointDef, b2DistanceJointDef, b2FrictionJointDef, b2ContactListener
 )
 
+from imgui_bundle.python_backends.pygame_backend import PygameRenderer
 # ------------------------------------------------------------
 # Config / Controls
 # ------------------------------------------------------------
@@ -600,7 +601,7 @@ class EnemyDummy:
 
         fd = b2FixtureDef(
             shape=b2CircleShape(pos=(0, 0), radius=radius),
-            density=3.0,  # heavier, harder to push
+            density=1.0,  # heavier, harder to push
             friction=1.0,  # more tangential grip
             restitution=0.0  # no bounce
         )
