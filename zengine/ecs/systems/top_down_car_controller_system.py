@@ -13,10 +13,9 @@ from zengine.util.quaternion import (
 )
 
 class TopDownCarControllerSystem(System):
-    def __init__(self, input_system, camera_sys):
+    def __init__(self, input_system, cam):
         super().__init__()
         self.input = input_system
-        self.camera_sys = camera_sys
         self.mouse_sensitivity = 0.2
         self.last_mouse_pos = None
         self.mouse_dragging = False
@@ -59,8 +58,8 @@ class TopDownCarControllerSystem(System):
         #         tr.x += velocity[0]
         #         tr.y += velocity[1]
         #         tr.z += velocity[2]
-
-
+        cam_tr = self.em.get_component(self.scene.active_camera, Transform)
+        cam_rb = self.em.get_component(self.scene.active_camera, RigidBody2D)
 
         for eid in self.em.get_entities_with(TopDownCarController, Transform, RigidBody2D):
             pc = self.em.get_component(eid, TopDownCarController)
@@ -72,6 +71,8 @@ class TopDownCarControllerSystem(System):
             right = quat_to_right(tr.rotation_x, tr.rotation_y, tr.rotation_z, tr.rotation_w)
             up = quat_to_up(tr.rotation_x, tr.rotation_y, tr.rotation_z, tr.rotation_w)
 
+
+
             # Handle movement: Arrow keys for translation
             if self.input.is_key_down(pygame.K_w):
                 dx = self.engine_power * up[0] * dt
@@ -79,13 +80,16 @@ class TopDownCarControllerSystem(System):
                 rb.velocity[0] += dx
                 rb.velocity[1] += dy
 
+                cam_rb.velocity[0] +=  dx
+                cam_rb.velocity[1] +=  dy
 
             if self.input.is_key_down(pygame.K_s):
                 dx = self.engine_power * up[0] * dt
                 dy = self.engine_power * up[1] * dt
                 rb.velocity[0] -= dx
                 rb.velocity[1] -= dy
-
+                cam_rb.velocity[0] -=  dx
+                cam_rb.velocity[1] -=  dy
 
             if self.input.is_key_down(pygame.K_a):
                 rb.angular_velocity[0] += self.turn_rate
