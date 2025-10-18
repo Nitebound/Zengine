@@ -55,7 +55,7 @@ class TopDownTest(Engine):
         # scene.entity_manager.add_component(cam, LightComponent(LightType.DIRECTIONAL, (1,1,1), 10, 100, False))
 
         player_car_eid = scene.entity_manager.create_entity()
-        scene.entity_manager.add_component(player_car_eid, Transform(x=0,y=0, z=1))
+        scene.entity_manager.add_component(player_car_eid, Transform(x=0,y=0, z=0.5))
         scene.entity_manager.add_component(player_car_eid, MeshFilter(mesh))
         scene.entity_manager.add_component(player_car_eid, mat)
         scene.entity_manager.add_component(player_car_eid, MeshRenderer(shader=self.default_shader, texture=mesh_texture))
@@ -65,7 +65,7 @@ class TopDownTest(Engine):
 
         # Main Camera
         scene.active_camera = cam
-        scene.entity_manager.add_component(cam, Transform(x=0.0, y=0.0, z=5.0))
+        scene.entity_manager.add_component(cam, Transform(x=0.0, y=0.0, z=1.20))
         scene.entity_manager.add_component(cam, CameraComponent(
             aspect=self.window.width / self.window.height,
             near=0.01, far=1000.0,
@@ -77,17 +77,18 @@ class TopDownTest(Engine):
         scene.entity_manager.add_component(cam, RigidBody2D(1, [0,0,0], [0,0,0]))
 
         scene.entity_manager.add_component(cam, FreeRoamCameraController(11, 1))
+        scene.entity_manager.add_component(cam, LightComponent(LightType.POINT, (1,1,1), 1, 100, False))
 
         # Create a point light in the scene
         light = scene.entity_manager.create_entity()
-        scene.entity_manager.add_component(light, Transform(x=0.0, y=0.0, z=2))
+        scene.entity_manager.add_component(light, Transform(x=0.0, y=0.0, z=5))
+
         # scene.entity_manager.add_component(light, LightComponent(
         #     type=LightType.POINT,
         #     color=(1.0, 1.0, 1.0),
         #     intensity=.50,
         #     range=400.0,
         # ))
-        scene.entity_manager.add_component(cam, LightComponent(LightType.POINT, (1,1,1), 1, 400, False))
 
         # — core systems —
         cam_sys = CameraSystem()
